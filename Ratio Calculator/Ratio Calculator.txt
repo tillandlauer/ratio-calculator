@@ -1,0 +1,101 @@
+setForegroundColor(0, 0, 0);
+setTool(6);
+run("Line Width...", "line=5");
+
+macro "Set only active on fire Action Tool - C108F123dCa0aF423dCf40F723dCfb0Fa23dCff9Fd23d"
+    {
+    run("Fire");
+    }
+
+macro "Set all on fire Action Tool - C108F123dCa0aF423dCf40F723dCfb0Fa23dCff9Fd23d"
+    {
+    run("setFire [f2]");
+    }
+
+macro "RGB Merge Action Tool - Cff0D63D64D65D71D72D73D74D75D81D82D83D84D85D93D94D95C0f0D90D91D92Da0Da1Da2Da3Da4Da5Da6Db0Db1Db2Db3Db4Db5Db6Dc0Dc1Dc2Dc3Dc4Dc5Dc6Dc7Dc8Dd1Dd2Dd3Dd4Dd5Dd6Dd7Dd8De1De2De3De4De5De6De7De8Df3Df4Df5Df6Cf0fD39D47D48D49D57D58D59D67D68D69Cf00D03D04D05D06D11D12D13D14D15D16D17D18D21D22D23D24D25D26D27D28D30D31D32D33D34D35D36D37D38D40D41D42D43D44D45D46D50D51D52D53D54D55D56D60D61D62C00fD3aD3bD3cD4aD4bD4cD4dD4eD5aD5bD5cD5dD5eD6aD6bD6cD6dD6eD6fD79D7aD7bD7cD7dD7eD7fD89D8aD8bD8cD8dD8eD8fD9aD9bD9cD9dD9eD9fDaaDabDacDadDaeDbaDbbDbcDbdDbeDcaDcbDccCfffD66D76D77D78D86D87D88D96C0ffD97D98D99Da7Da8Da9Db7Db8Db9Dc9"
+    {
+	run("RGB Merge...");
+    run("8-bit");    
+    run("Fire");	
+    }
+
+macro "Mask Generator Action Tool - Cff0D2bD2cD2dD2eD32D33D34D35D36D3bD3eD42D46D47D4bD4eD52D57D5bD5dD5eD62D66D67D6bD6cD72D76D82D86D92D93D94D95D96D99D9aD9bD9cDa9DadDb6Db7Db8Db9DbdDc6DcdDd6Dd7DdaDdbDdcDddDe7De8De9DeaC000D1bD1cD1dD1eD22D23D24D25D26D2aD2fD31D37D3aD3cD3dD3fD41D43D44D45D48D4aD4cD4dD4fD51D53D56D58D5aD5cD5fD61D63D65D68D6aD6dD6eD71D73D75D77D7bD7cD81D83D84D85D87D89D8aD8bD8cD91D97D98D9dDa1Da2Da3Da4Da5Da6Da7Da8DaaDabDacDaeDb5DbaDbcDbeDc5Dc7Dc8Dc9DcaDcbDccDceDd5Dd8Dd9DdeDe6DebDecDedDf7Df8Df9Dfa"
+    {
+    run("Mask Generator");
+    }
+
+macro "Ratio Calculator Action Tool - C000D0dD0eD13D14D15D16D17D18D19D1aD1bD1cD1dD20D21D22D23D24D25D26D27D28D29D2aD2bD2cD2fD33D34D35D36D37D38D39D3aD3bD3eD3fD47D48D49D4aD4dD4eD4fD5cD5dD5eD5fD6bD6cD6dD6eD6fD7dD7eD7fD8dD8eD8fD9dD9eD9fDaeDafDbeDbfDcfDdfDefDffC000C111C222C333C444D1fD2eD3dD4cD5bD6aD79D87D88D96Da5Db4Dc3Dd2De1Df0C444C555C666C777C888C999CaaaCbbbCcccD0fD1eD2dD3cD4bD5aD69D78D86D95Da4Db3Dc2Dd1De0CcccCdddCeeeCfff"
+    {
+    run("Ratio Calculator");
+    }
+
+macro "Complete Calculation Action Tool - Cff0D2bD2cD2dD2eD32D33D34D3bD3eD42D4eD52D5dD5eD62D76D86D95D96D99D9aDa9Db6Db7Db8Db9DbdDc6DcdDd6Dd7DdaDdbDdcDddDe7De8De9DeaC000D46D47D48D49D4aD54D55D56D57D58D59D5aD5bD64D6bD6cD73D74D7cD83D8cD93D9cDa3Da4DacDb4DbbCaaaD68D75Dc4Dc5DcbC000D45D65D7bDbcC666D37D38D8dD9dCcccD3aD6dDa5Dc3Cbb0D67D82D92C777D69D7dDbaCcccD7aDa2Caa0D36DadCbbbDcaDccC666D5cD8bC222D84DabC111D63D6aC888D39D44C770D4bD66C333Db3C440D94C999D53C444Db5Cdd0D72C880D9bCee0D35"
+    {
+    run("Mask Generator");
+    run("Ratio Calculator");
+    }
+
+macro "Ratio Analysis Action Tool- C000D45D55D65D6bD72D73D74D75D76D77D78D7bD85D8bD95D9bDa5CaaaD44D46D54D56D5bD64D66D71D79D94D96Da4Da6DabC666D82D83D87D88Db5CcccD81D89Db4Db6C333D6cD7cD8cD9cC555D84D86CbbbD5cDac"
+   {
+   run("Ratio Analysis");
+   }
+
+macro "Save as TIFF Action Tool - C0afo11eeC000O11eeT6d0aS"
+    {
+    run("Tiff...");
+    }
+
+macro "setFire [f2]"
+    {
+//    print("\\Clear");
+    setBatchMode(true);
+    i=1;
+    j=-1;    
+    while (i<=nImages)
+        {
+        if (isOpen(j))
+            {
+            selectImage(j);
+            bD=bitDepth();
+//            title=getTitle();
+//            print("ID of image "+i+" of "+nImages+", '"+title+"' is: "+j+", bits: "+bD+".");
+            if (bD==8)
+                {
+                run("Fire");
+                }
+            i++;
+            }
+        j=j-1;
+        }
+    setBatchMode(false);
+    }
+
+macro "closeAll [f10]"
+    {
+    while (nImages>0)
+        {
+        selectImage(nImages);  
+        run("Close");
+        }
+    }    
+
+function removeBackground()
+    {
+    title=getTitle();
+    meanBG=getNumber("Mean Background:", 10);
+    newMax=255/(255-meanBG)
+
+    run("Subtract...", "value="+meanBG+" stack");
+    run("Multiply...", "value="+newMax+" stack");
+
+    return(0);
+    }
+
+macro "info"
+    {
+    bD=bitDepth();
+    title=getTitle();
+    i=getImageID();
+    print("ID of image '"+title+"' is: "+i+", bits: "+bD+".");
+    }
+
