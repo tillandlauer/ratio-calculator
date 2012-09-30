@@ -1,0 +1,17 @@
+<project name="Ratio_Calculator" default="" basedir=".">
+	<property name="src" location="src" />
+	<property name="build" location="bin" />
+	<target name="main" depends="compress" description="Main target">
+	</target>
+	<target name="compress" depends="" description="Generate the distribution">
+ 		<jar jarfile="Ratio_Calculator.jar">
+ 			<fileset dir="." includes="plugins.config" />
+ 			<fileset dir="${src}" includes="**/*.*" />
+ 			<fileset dir="${build}" includes="**/*.*" />
+ 	 		<manifest>
+    	    	<attribute name="Built-By" value="Till Andlauer"/>
+ 	 		</manifest>
+ 		</jar>
+		<copy file="Ratio_Calculator.jar" toDir="../../../../../../Applications/ImageJ/plugins/" />
+	</target>
+</project>
