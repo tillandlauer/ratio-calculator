@@ -173,6 +173,8 @@ public class Ratio_Calculator implements PlugIn
         ImagePlus[] img = chooseImages(); // choose images and set variables.
         if (img == null) return;
         
+        if (logInfo) showInfo(img); // Show the parameters
+        
         double start_time = System.currentTimeMillis();
         IJ.showStatus("Beginning calculation...");
 
@@ -266,7 +268,7 @@ public class Ratio_Calculator implements PlugIn
 
     /**
      * Calculate the ratios
-     * @param imp_in ImagePlus[] containing two (input) images
+     * @param imp_in <code>ImagePlus[]</code> containing two (input) images
      * @return ImagePlus containing the result
      */
     public ImagePlus calcRatio(ImagePlus[] imp_in) // Calculate the ratios - input: ImagePlus[] containing two (input) images. Output: ImagePlus containing the result
@@ -292,7 +294,7 @@ public class Ratio_Calculator implements PlugIn
         // arrays for statistics and histograms
         double[] histoDataS = new double[1]; // original data
         double[] histoDataN = new double[1]; // normalized data (by frequency)
-        double[][] ratioData = new double[1][1]; // combination of histogram data and frequencies for statistics
+        double[][] ratioData = new double[1][1]; // combination of histogram frequencies and actual ratios for statistics
 
          // histogram settings
         int histoX = 1024;
@@ -492,7 +494,7 @@ public class Ratio_Calculator implements PlugIn
         if (histo)
             {
             IJ.showStatus("Generating histogram...");
-            HistoWrapper hw;
+            HistoWrapper hw; // Object containing histo image and table
             FileSaver fs;
             
             if (standHisto)
@@ -542,14 +544,14 @@ public class Ratio_Calculator implements PlugIn
         else imp_out = imp_in[0];
 
         return imp_out;
-        }
+        } // end of calcRatio
 
 
     /**
-     * Save a results table
+     * Save a ResultsTable
      *
-     * @param rt the rt
-     * @param tableTitle the table title
+     * @param rt ResultsTable
+     * @param tableTitle Filename
      */
     private void saveTable(ResultsTable rt, String tableTitle) // Save a results table
         {
@@ -568,9 +570,18 @@ public class Ratio_Calculator implements PlugIn
 
 
     /**
-     * Calc stats.
+     * Calculate statistics of the ratio data
+     * <br>The output table contains Minimum, Quartile 1, Median, Quartile 3, Maximum
+     * <br>First line: standard results // second line: combined results // third line: inverted results
+     * <br><i>Combined results:</i> 
+     * <br>Show the original value if <code>0<=value<=1</code>, otherwise <code>1 + (1 - the inverted value)</code>; this way values are uniformly distributed around 1 
+     * <br><code>Ratio Analysis</code> uses the original values for statistics (standard results, line 1)
      *
-     * @param ratioResults the ratio results
+     * @param ratioResults <code>double[x][y]</code> containing the ratio data; <code>x</code>: all ranks (<code>39641</code> bins); <code>y=0</code>: histogram frequencies; <code>y=1</code>: ratio values
+     * @return ResultsTable with basic statistics (Minimum, Quartile 1, Median, Quartile 3, Maximum)
+	 * @see getHalf
+	 * @see getMinMax
+	 * @see getMedian
      */
     public ResultsTable calcStats(double[][] ratioResults) // Calculate statistics of a ratio table
         {
@@ -679,14 +690,15 @@ public class Ratio_Calculator implements PlugIn
         rt.show("Results");
         
         return rt;
-        }
+        } // end of calcStats
 
 
      /**
-      * Gets the half.
+      * Divides an array into two halves; the input already has to be sorted
       *
-      * @param matrix the matrix
-      * @return the half
+      * @param matrix <code>double[]</code> array
+      * @return <code>double[x][y]</code>, <code>x=0</code>: lower half, <code>x=1</code>: upper half 
+	  * @see calcStats
       */
      private static double[][] getHalf(double[] matrix) // Divide a matrix into two halves. The input matrix already has to be sorted. Used by calcStats().
         {        
@@ -725,10 +737,11 @@ public class Ratio_Calculator implements PlugIn
 
 
      /**
-      * Gets the min max.
+      * Calculates the min/max values of an array
       *
-      * @param matrix the matrix
-      * @return the min max
+      * @param matrix <code>double[]</code> array
+      * @return <code>double[x]</code>, <code>x=0</code>: minimum, <code>x=1</code>: maximum 
+	  * @see calcStats
       */
      private static double[] getMinMax(double[] matrix) // Get min/max values of a matrix. Used by calcStats().
         {
@@ -747,10 +760,12 @@ public class Ratio_Calculator implements PlugIn
 
 
      /**
-      * Gets the median.
+      * Calculates the median of an array; the input already has to be sorted
+      * <br>In case of ties the lower value is chosen
       *
-      * @param matrix the matrix
-      * @return the median
+      * @param matrix <code>double[]</code> array
+      * @return Median 
+	  * @see calcStats
       */
      private static double getMedian(double[] matrix) // Get median value of a matrix. The input matrix already has to be sorted. Used by calcStats().
         {
@@ -879,7 +894,7 @@ public class Ratio_Calculator implements PlugIn
         rt.show("Results");
         ip_out.flipVertical();
         
-        HistoWrapper hw = new HistoWrapper();
+        HistoWrapper hw = new HistoWrapper(); // Object containing histo image and table
         hw.setImage(imp_out);
         hw.setTable(rt);
         
@@ -1121,7 +1136,7 @@ public class Ratio_Calculator implements PlugIn
         
         if (histo)
             {
-            HistoWrapper hw;
+            HistoWrapper hw; // Object containing histo image and table
         	
             if (standHisto)
                 {
@@ -1713,40 +1728,41 @@ public class Ratio_Calculator implements PlugIn
             saveDir = dc.getDirectory();
 	        }
         
-        if (logInfo)
-	    	{
-	    	IJ.log("Stack 1: "+img_out[0].getTitle());
-	    	IJ.log("Stack 2: "+img_out[1].getTitle());
-	    	if (mask) IJ.log("Mask: "+img_out[2].getTitle());
-	    	if (stripStats) IJ.log("Calculation without highest intensity value");
-	    	if (histo) 
-	    		{
-	            switch (scaleOption)
-		            {
-		            case 0: IJ.log("Scaling: Data to fixed max. value (1)");   
-		                    break;
-		            case 1: IJ.log("Scaling: Plot to image height (2)");   
-		                    break;
-		            case 2: IJ.log("Scaling: No scaling (3)");   
-		                    break;
-		            case 3: IJ.log("Scaling: Normalized by total amount of data (4)");   
-		                    break;
-		            }
-	    		IJ.log("Number of bins: "+IJ.d2s(histoBins,0));
-	    		IJ.log("Scaling factor: "+IJ.d2s(defaultScale,0));
-	    		IJ.log("Image height: "+IJ.d2s(drawMax,0));
-	    		}
-	    	if (scatter) 
-	    		{
-		    	if (maxScatter) IJ.log("Scatter plot scaled");
-		    	if (scatterScale) IJ.log("Scatter plot normalized");
-	    		IJ.log("Multiplication factor for scatter plot: "+IJ.d2s(scatterMulti,2));
-	    		}
-	    	if (useUniRatio) IJ.log("Ratio (x-y)/(x+y) was used");
-	    	else IJ.log("Ratio x/y was used");
-	    	if (oldFormat) IJ.log("Old format was used for statistics");
-	    	}
-        
         return img_out;
         }
+
+    private void showInfo(ImagePlus[] img_out)
+	    {
+    	IJ.log("Stack 1: "+img_out[0].getTitle());
+    	IJ.log("Stack 2: "+img_out[1].getTitle());
+    	if (mask) IJ.log("Mask: "+img_out[2].getTitle());
+    	if (stripStats) IJ.log("Calculation without highest intensity value");
+    	if (histo) 
+    		{
+            switch (scaleOption)
+	            {
+	            case 0: IJ.log("Scaling: Data to fixed max. value (1)");   
+	                    break;
+	            case 1: IJ.log("Scaling: Plot to image height (2)");   
+	                    break;
+	            case 2: IJ.log("Scaling: No scaling (3)");   
+	                    break;
+	            case 3: IJ.log("Scaling: Normalized by total amount of data (4)");   
+	                    break;
+	            }
+    		IJ.log("Number of bins: "+IJ.d2s(histoBins,0));
+    		IJ.log("Scaling factor: "+IJ.d2s(defaultScale,0));
+    		IJ.log("Image height: "+IJ.d2s(drawMax,0));
+    		}
+    	if (scatter) 
+    		{
+	    	if (maxScatter) IJ.log("Scatter plot scaled");
+	    	if (scatterScale) IJ.log("Scatter plot normalized");
+    		IJ.log("Multiplication factor for scatter plot: "+IJ.d2s(scatterMulti,2));
+    		}
+    	if (useUniRatio) IJ.log("Ratio (x-y)/(x+y) was used");
+    	else IJ.log("Ratio x/y was used");
+    	if (oldFormat) IJ.log("Old format was used for statistics");
+	    }
+    
     }
