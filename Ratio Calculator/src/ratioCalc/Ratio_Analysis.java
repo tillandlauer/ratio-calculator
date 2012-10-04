@@ -25,6 +25,8 @@ import java.util.Arrays;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
+//import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+
 import jsc.independentsamples.MannWhitneyTest;
 
 // _____________________________________________________________________________________________________________
@@ -90,6 +92,7 @@ public class Ratio_Analysis implements PlugIn
     private int nFiles = 8; // number of files to be opened
 //    private int compGroups = 0; // option to arrange comparative statistics into groups; *currently disabled*
     private boolean sd = true; // calculate/show standard errors
+    private boolean statsMean = true; // use mean instead of median for statistics
     private boolean stats_mad = false; // use MAD (median absolute deviation) for statistics
     private boolean histo_med = false; // use median for histograms
     private static boolean oldFormat = false; // read statistics files in the old format (for compatibility)
@@ -368,11 +371,21 @@ public class Ratio_Analysis implements PlugIn
             // show the original value if 0<=value<=1, otherwise 1 + (1 - the inverted value)
             // this way values are uniformly distributed around 1
             // The original values are used for statistics (standard results, line 1)
+
+//            DescriptiveStatistics stats = new DescriptiveStatistics();            
             
             for (int i=0; i<data.length; i++) // data[x][y]: [x]=min,q1,med,q3,max; [y]=file 
                 {
-                Arrays.sort(data[i]);
-                median[i] = getMedian(data[i]); // get the median for each value (min,q1â€¦)
+            	if (statsMean)
+	            	{
+//            		median[i] = getMean(data[i]); // get the mean for each value (min,q1âmedian,q3,max)
+//            		median[i] = math3.(data[i]); // get the mean for each value (min,q1âmedian,q3,max)
+	            	}
+            	else // median
+            		{
+	            	Arrays.sort(data[i]);
+	                median[i] = getMedian(data[i]); // get the median for each value (min,q1âmedian,q3,max)
+            		}    
                 if (oldFormat) // old file format, obsolete
                     {
                     if (median[i]>1) invMed[i] = 1.0d/(2-median[i]);
@@ -2205,6 +2218,7 @@ public class Ratio_Analysis implements PlugIn
 //        gd.addNumericField("Arrange comparative statistics in groups of:", 3, 0); // DISABLED
         gd.addCheckbox("Calculate Standard Errors", sd);       
         gd.addCheckbox("Use Median Absolute Deviation instead of Standard Error of the Median for Statistics", stats_mad);              
+        gd.addCheckbox("Use Mean instead of Median for Statistics", statsMean);              
         gd.addCheckbox("Use Median instead of Mean for Histograms", histo_med);              
 		gd.setInsets(0,20,20);
         gd.addCheckbox("Use statistics files in the old format", oldFormat);              
@@ -2235,6 +2249,7 @@ public class Ratio_Analysis implements PlugIn
 //        compGroups = (int)gd.getNextNumber();
         sd = gd.getNextBoolean();
         stats_mad = gd.getNextBoolean();
+        statsMean = gd.getNextBoolean();
         histo_med = gd.getNextBoolean();
         oldFormat = gd.getNextBoolean();
         boolean manual = gd.getNextBoolean();
@@ -2276,11 +2291,11 @@ public class Ratio_Analysis implements PlugIn
 
         if (job==3) all=true; // run all basic analyses     
         
-        if (job==0 || job==1 || job==3 || job==4 || job==5) // if histogram or statistics shall be calculated
+        if (job==0 || job==1 || job==3 || job==5) // if histogram or statistics shall be calculated
             {
             if (nFiles<4 && (!stats_mad || histo_med))
                 {
-                IJ.error("Standard error of the median can only be calculated with data from at least 4 files; switching to means (histogram) and MAD (statistics) instead.");
+                IJ.showMessage("Standard error of the median can only be calculated with data from at least 4 files; switching to means (histogram) and MAD (statistics) instead.");
                 stats_mad = true;
                 histo_med = false;
                 }     

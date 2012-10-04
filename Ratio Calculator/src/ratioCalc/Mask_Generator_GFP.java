@@ -50,14 +50,14 @@ import ij.process.StackConverter;
 // _____________________________________________________________________________________________________________
 
 
-public class Mask_Generator implements PlugIn
+public class Mask_Generator_GFP implements PlugIn
     {
     private String title = "Mask Generator v1.12a"; // title for dialogs and error messages
     private String memoryError = "Out of memory...";
     private int threshold = -1; // thresholding value, re-set in execThresh() 
     // All of the following options can be set in chooseImages():
-    private double defaultThreshold = 0.8d; // default threshold for dialog (-> factor)
-    private boolean rgb = true; // merge channels
+    private double defaultThreshold = 0.95d; // default threshold for dialog (-> factor)
+    private boolean rgb = false; // merge channels
     private boolean dupl = false; // duplicate the first stack during RGB merge
     private boolean merge = true; // merge stack and (Amira) segmentation mask. If "false" only thresholding is performed.
     private boolean thresh = true; // threshold
@@ -368,6 +368,7 @@ public class Mask_Generator implements PlugIn
             }
 
         if (!keepAM) img[1].close();
+        img[0].close();
         IJ.showStatus("The calculation took "+IJ.d2s((System.currentTimeMillis()-start_time)/1000.0d, 2)+" seconds."); // display the amount of time used.
         }
 
@@ -743,7 +744,7 @@ public class Mask_Generator implements PlugIn
             if (open_images.length>2)
                 {
                 gd.addChoice("Stack 2:", image_titles, image_titles[1]);
-                gd.addChoice("Mask:", image_titles, image_titles[2]);
+                gd.addChoice("Mask:", image_titles, image_titles[3]);
                 }
             else
                 {

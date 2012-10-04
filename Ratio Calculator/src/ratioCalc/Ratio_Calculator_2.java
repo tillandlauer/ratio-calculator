@@ -26,7 +26,7 @@ import java.util.ArrayList;
  * @author Till Andlauer (till@andlauer.net)
  * @version 1.30a - 12-09-26
  */
-public class Ratio_Calculator implements PlugIn
+public class Ratio_Calculator_2 implements PlugIn
     {
 	/** Title for dialogs and error messages. */
     private String title = "Ratio Calculator v1.30a"; // title for dialogs and error messages
@@ -62,7 +62,7 @@ public class Ratio_Calculator implements PlugIn
     /** Keep source files open; set in <code>chooseImages</code> 
     * <br>If <code>false</code> ImageJ might occasionally crash
     */
-    private boolean keepFiles = true; // Keep source files open
+    private boolean keepFiles = false; // Keep source files open
     /** Save all generated files; set in <code>chooseImages</code>
     * @see saveDir
     */
