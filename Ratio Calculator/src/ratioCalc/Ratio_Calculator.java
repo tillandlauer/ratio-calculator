@@ -62,7 +62,7 @@ public class Ratio_Calculator implements PlugIn
     /** Keep source files open; set in <code>chooseImages</code> 
     * <br>If <code>false</code> ImageJ might occasionally crash
     */
-    private boolean keepFiles = true; // Keep source files open
+    private boolean keepFiles = false; // Keep source files open
     /** Save all generated files; set in <code>chooseImages</code>
     * @see saveDir
     */
@@ -247,7 +247,6 @@ public class Ratio_Calculator implements PlugIn
             img[1].close();
             if (mask) img[2].close();
             }
-        else img[2].close();
 
         if (saveFiles)
             {
@@ -390,7 +389,7 @@ public class Ratio_Calculator implements PlugIn
                             {
                             if (value[2]>threshold) 
                                 {
-                                if (standHisto) histoDataS[ratio]++; // sum the number of times each ratio occured                   
+                                if (standHisto) histoDataS[ratio]++; // sum the number of times each ratio occurred                   
                                 if (normHisto) histoDataN[ratio] = histoDataN[ratio] + (1.0d/counts); // normalize the numbers by the statistical frequency 
                                 if (statistics && (ratioData[ratio][1]==0)) ratioData[ratio][1] = ranks[Math.round(value[0])][Math.round(value[1])][3]; // add the real ratio x/y to the array (for statistics)                    
                                 maskCounter++;
@@ -412,7 +411,7 @@ public class Ratio_Calculator implements PlugIn
                                 {
                                 if ((value[0]>254) || (value[1]>254))
                                     {
-                                    satCounter++; // count number of staturated pixels                       
+                                    satCounter++; // count number of saturated pixels                       
                                     maskCounter++; // count total number of pixels in mask
                                     }
                                 else
@@ -1591,8 +1590,8 @@ public class Ratio_Calculator implements PlugIn
 
         // create/show the dialog                
         GenericDialog gd = new GenericDialog(title);
-        gd.addChoice("Stack 1:", image_titles, image_titles[1]);
-        gd.addChoice("Stack 2:", image_titles, image_titles[0]);
+        gd.addChoice("Stack 1:", image_titles, image_titles[0]);
+        gd.addChoice("Stack 2:", image_titles, image_titles[1]);
 
 		gd.setInsets(20,20,0);
 		gd.addCheckboxGroup(cgRows3, cgColumns3, cgLabels3, cgStates3);

@@ -12,7 +12,6 @@ import ij.plugin.RGBStackMerge;
 import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 import ij.process.ImageStatistics;
-import ij.process.ShortProcessor;
 import ij.process.StackConverter;
 
 // _____________________________________________________________________________________________________________
@@ -50,15 +49,13 @@ import ij.process.StackConverter;
 // _____________________________________________________________________________________________________________
 
 
-public class Mask_Generator implements PlugIn
+public class Mask_Generator_Triple implements PlugIn
     {
     private String title = "Mask Generator v1.12a"; // title for dialogs and error messages
     private String memoryError = "Out of memory...";
     private int threshold = -1; // thresholding value, re-set in execThresh() 
     // All of the following options can be set in chooseImages():
     private double defaultThreshold = 0.8d; // default threshold for dialog (-> factor)
-    private boolean rgb = true; // merge channels
-    private boolean dupl = false; // duplicate the first stack during RGB merge
     private boolean merge = true; // merge stack and (Amira) segmentation mask. If "false" only thresholding is performed.
     private boolean thresh = true; // threshold
     private boolean tSlice = true; // calculate threshold based on substacks
@@ -106,28 +103,24 @@ public class Mask_Generator implements PlugIn
                 }
             }
 
-        // Merge channels into 8-bit "RGB" (first merge channels as RGB, then convert to 8-bit) -> combination of both channels
-        if (rgb)
-            {
-            ImageStack[] stacks = new ImageStack[3];
-            stacks[0] = img[0].getStack();
-            stacks[1] = img[2].getStack();
-            if (dupl) stacks[2] = img[0].getStack(); // duplicate the first stack; i.e. give the first stack twice the weight.
-            else stacks[2] = null;
-            int w  = img[0].getWidth(); 
-            int h = img[0].getHeight();
-            int s = img[0].getStackSize();
+        ImageStack[] stacks = new ImageStack[3];
+        stacks[0] = img[0].getStack();
+        stacks[1] = img[1].getStack();
+        stacks[2] = img[2].getStack();
+        int w  = img[0].getWidth(); 
+        int h = img[0].getHeight();
+        int s = img[0].getStackSize();
 
-            RGBStackMerge rsm = new RGBStackMerge();
-            ImageStack s_rgb = rsm.mergeStacks(w, h, s, stacks[0], stacks[1], stacks[2], true);
-            ImagePlus img_rgb = new ImagePlus("RGB", s_rgb);          
-            StackConverter sc = new StackConverter(img_rgb);
-            sc.convertToGray8();
+        RGBStackMerge rsm = new RGBStackMerge();
+        ImageStack s_rgb = rsm.mergeStacks(w, h, s, stacks[0], stacks[1], stacks[2], true);
+        ImagePlus img_rgb = new ImagePlus("RGB", s_rgb);          
+        StackConverter sc = new StackConverter(img_rgb);
+        sc.convertToGray8();
 
-            img[0]=img_rgb; 
-            img[2]=null;
-            IJ.freeMemory();
-            }
+        img[0]=img_rgb; 
+        img[1]=null; 
+        img[2]=null; 
+        IJ.freeMemory();
 
         // Mask image
         ImagePlus img_mask = null;
@@ -138,14 +131,14 @@ public class Mask_Generator implements PlugIn
             if (!thresh) // the job is finished then
                 {
                 img_mask.show();
-                if (!ratio) IJ.run("Fire");
+                IJ.run("Fire");
                 }
             if (mask) // show a copy of the mask without thresholding
                 {
                 ImagePlus img_show = new Duplicator().run(img_mask);
                 img_show.setTitle(img_mask.getTitle());
                 img_show.show();
-                if (!ratio) IJ.run("Fire");
+                IJ.run("Fire");
                 }            
             }
 
@@ -364,7 +357,7 @@ public class Mask_Generator implements PlugIn
             if (!ratio) IJ.run("Fire");
             }
 
-        if (!keepAM) img[1].close();
+        if (merge && !keepAM) img[3].close();
         IJ.showStatus("The calculation took "+IJ.d2s((System.currentTimeMillis()-start_time)/1000.0d, 2)+" seconds."); // display the amount of time used.
         }
 
@@ -615,36 +608,11 @@ public class Mask_Generator implements PlugIn
         }
 
 
-    private ImageProcessor shortCompare(ImageProcessor imp_in, ImageProcessor imp_mask) // Used by createMask() to do the actual masking in ratio files. This conversion is adapted from the function "convertShortToByte" of the ImageJ class "TypeConverter".     
-        {
-        int threshold = 0;
-        int width  = imp_in.getWidth(); 
-        int height = imp_in.getHeight();
-        int size = width*height;
-        short[] pixels_in = (short[])imp_in.getPixels();
-        byte[] pixels_mask = (byte[])imp_mask.getPixels();
-        short[] pixels_out = new short[size];
-        int value;
-        for (int i=0; i<size; i++) 
-            {
-            value = (pixels_mask[i])&0xffff;
-            if (value>threshold) pixels_out[i] = pixels_in[i];
-            else // pixel not part of the mask
-                {
-                if (ratio) pixels_out[i] = (short)19821; // black in ratio files
-                else pixels_out[i] = 0;
-                }
-            }
-        ImageProcessor imp_out = new ShortProcessor(width, height, pixels_out, imp_in.getCurrentColorModel());
-        return imp_out;            
-        }
-
-
     public ImagePlus createMask(ImagePlus[] imp_in) // Mask an image - Input: ImagePlus array containing two/three (input) images. output: ImagePlus containing the result
         {
         ImageStack[] stacks = new ImageStack[3];
         stacks[0] = imp_in[0].getStack();
-        stacks[1] = imp_in[1].getStack();
+        stacks[1] = imp_in[3].getStack();
         int width  = imp_in[0].getWidth(); 
         int height = imp_in[0].getHeight();
         int slices = imp_in[0].getStackSize();
@@ -673,29 +641,6 @@ public class Mask_Generator implements PlugIn
                 ip[0] = stacks[0].getProcessor(i); 
                 ip[1] = stacks[1].getProcessor(i);
                 ip_out = byteCompare(ip[0], ip[1]); // do the actual masking
-                stacks[2].addSlice(null, ip_out);
-                }
-            imp_out.setStack(null, stacks[2]);
-            imp_out.copyScale(imp_in[0]);
-            }
-        // For 16-bit images (ratio files)
-        else if (imp_in[0].getType() == ImagePlus.GRAY16)
-            {
-            imp_out = NewImage.createShortImage(imp_out_title, width, height, slices, 1);
-            if (imp_out == null)
-                {
-                IJ.error(title, memoryError);
-                return null;
-                }
-            WindowManager.checkForDuplicateName = true;  
-
-            // Mask each slice
-            for (int i=1; i<=slices; i++)
-                {
-                ip[0] = stacks[0].getProcessor(i); 
-                ip[1] = stacks[1].getProcessor(i);
-                ip_out = shortCompare(ip[0], ip[1]); // do the actual masking
-                ip_out.setMinAndMax(0,39641); // scale to the max value in ratio files
                 stacks[2].addSlice(null, ip_out);
                 }
             imp_out.setStack(null, stacks[2]);
@@ -731,33 +676,26 @@ public class Mask_Generator implements PlugIn
 
         String[] method_titles = {"Percentiles", "IsoData (Iterative intermeans)"};
 
+        if (open_images.length<3)
+	        {
+        	return null;
+	        }
+        
         // Create/show the dialog                
         GenericDialog gd = new GenericDialog(title);
 
         gd.addChoice("Stack 1:", image_titles, image_titles[0]);
-        if (open_images.length>1)
+        gd.addChoice("Stack 2:", image_titles, image_titles[1]);
+        if (open_images.length>3)
             {
-            if (open_images.length>2)
-                {
-                gd.addChoice("Stack 2:", image_titles, image_titles[1]);
-                gd.addChoice("Mask:", image_titles, image_titles[2]);
-                }
-            else
-                {
-                gd.addChoice("Mask:", image_titles, image_titles[1]);
-                }
-            if (open_images.length>2)
-                {
-                gd.addCheckbox("RGB merge stacks 1 and 2 first", rgb);
-        		gd.setInsets(0,20,20);
-                gd.addMessage("Otherwise stack 2 will be ignored");
-        		gd.setInsets(0,20,20);
-                gd.addCheckbox("Duplicate first stack", dupl);
-                }
-            gd.addCheckbox("Merge stack and segmentation mask", merge);
-    		gd.setInsets(0,20,20);
-            gd.addMessage("Otherwise the mask will be ignored");
+            gd.addChoice("Stack 3:", image_titles, image_titles[2]);
+            gd.addChoice("Mask:", image_titles, image_titles[3]);
             }
+        else
+            {
+            gd.addChoice("Stack 3:", image_titles, image_titles[2]);
+            }
+        gd.addCheckbox("Merge stacks and segmentation mask", merge);
 
         gd.addCheckbox("Threshold", thresh);
 		gd.setInsets(0,20,0);
@@ -778,10 +716,8 @@ public class Mask_Generator implements PlugIn
         gd.addNumericField("Min # of slices per substack:", 30, 0);
         gd.addMessage("To calculate the ratio for each slice individually, choose \"manual\" and enter the total number of slices as the number of substacks.");
 
-        if (open_images.length>1)
+        if (open_images.length>3)
             {
-    		gd.setInsets(20,20,0);
-            gd.addCheckbox("Use ratio LUT", ratio);
     		gd.setInsets(20,20,0);
             gd.addCheckbox("Keep non-thresholded mask", mask);
             gd.addCheckbox("Keep Amira (segmentation mask) file", keepAM);
@@ -789,30 +725,28 @@ public class Mask_Generator implements PlugIn
 
 		gd.setInsets(20,20,0);
         gd.addCheckbox("Show parameters in log window", logInfo);
-        gd.addMessage("If the images aren't image stacks, new image stacks will be created that contain a second, blank slice. These images can be used for Ratio Calculator.");
+        gd.addMessage("If the images aren't image stacks, new image stacks will be created that contain a second, blank slice. These images can be used for Ratio/Intensity Calculator.");
 		gd.setInsets(0,20,0);
-        gd.addMessage("In this case, you have to use a mask in Ratio Calculator. If you don't really wish to use a mask, use a merge of the two channels as a mask.");
+        gd.addMessage("In this case, you have to use a mask in Ratio/Intensity Calculator. If you don't really wish to use a mask, use a merge of the two channels as a mask.");
 
         gd.showDialog();
         if (gd.wasCanceled())  return null;
         
         // Process the input
-        rgb = false; dupl = false; merge = false; ratio = false; mask = false; keepAM = false; // important in case open_images.length<2
+        merge = false; mask = false; keepAM = false; // important in case open_images.length<2
         
-        if (open_images.length>1)
+        if (open_images.length>3)
             {
-            if (open_images.length>2) rgb = gd.getNextBoolean();
-            if (open_images.length>2) dupl = gd.getNextBoolean();
             merge = gd.getNextBoolean();
             }
+        else merge = false;
         thresh = gd.getNextBoolean();
         tSlice = gd.getNextBoolean();
         iThresh = gd.getNextBoolean();
         showRes = gd.getNextBoolean();
         manual = gd.getNextBoolean();
-        if (open_images.length>1)
+        if (open_images.length>3)
             {
-            ratio = gd.getNextBoolean();
             mask = gd.getNextBoolean();
             keepAM = gd.getNextBoolean();
             }
@@ -823,47 +757,38 @@ public class Mask_Generator implements PlugIn
         cutOff = (int)gd.getNextNumber();
 
         // Load the images
-        ImagePlus[] img_out = new ImagePlus[2];
-        if (rgb) img_out = new ImagePlus[3];
+        ImagePlus[] img_out = new ImagePlus[4];
         img_out[0] = WindowManager.getImage(open_images[gd.getNextChoiceIndex()]);
-
-        if (open_images.length>1)
+        img_out[1] = WindowManager.getImage(open_images[gd.getNextChoiceIndex()]);
+        img_out[2] = WindowManager.getImage(open_images[gd.getNextChoiceIndex()]);
+        if (merge)
             {
-            if (!rgb)
-                {
-                if (open_images.length>2) img_out[1] = WindowManager.getImage(open_images[gd.getNextChoiceIndex()]);
-                img_out[1] = WindowManager.getImage(open_images[gd.getNextChoiceIndex()]);
-                }
-            else
-                {
-                img_temp = WindowManager.getImage(open_images[gd.getNextChoiceIndex()]);
-                img_out[1] = WindowManager.getImage(open_images[gd.getNextChoiceIndex()]);
-                img_out[2] = img_temp;
-                if (img_out[0].getWidth() != img_out[2].getWidth() || img_out[0].getHeight() != img_out[2].getHeight() || img_out[0].getStackSize() != img_out[2].getStackSize())
-                    {         
-                    IJ.error(title, "The stacks are not compatible.");
-                    return null;
-                    }
-                }
-            if (rgb || merge)
-                { 
-                if (img_out[0].getWidth() != img_out[1].getWidth() || img_out[0].getHeight() != img_out[1].getHeight() || img_out[0].getStackSize() != img_out[1].getStackSize()) // check whether the images are compatible
-                    {         
-                    IJ.error(title, "The stacks are not compatible.");
-                    return null;
-                    }
+            img_out[3] = WindowManager.getImage(open_images[gd.getNextChoiceIndex()]);
+            if (img_out[0].getWidth() != img_out[3].getWidth() || img_out[0].getHeight() != img_out[3].getHeight() || img_out[0].getStackSize() != img_out[3].getStackSize())
+                {         
+                IJ.error(title, "The stacks are not compatible.");
+                return null;
                 }
             }
+        if (img_out[0].getWidth() != img_out[1].getWidth() || img_out[0].getHeight() != img_out[1].getHeight() || img_out[0].getStackSize() != img_out[1].getStackSize())
+        {         
+        IJ.error(title, "The stacks are not compatible.");
+        return null;
+        }
+        if (img_out[0].getWidth() != img_out[2].getWidth() || img_out[0].getHeight() != img_out[2].getHeight() || img_out[0].getStackSize() != img_out[2].getStackSize())
+	        {         
+	        IJ.error(title, "The stacks are not compatible.");
+	        return null;
+	        }
 
         if (gd.getNextChoiceIndex()==0) perc = true;
 
         if (logInfo)
         	{
         	IJ.log("Stack 1: "+img_out[0].getTitle());
-        	if (rgb) IJ.log("Stack 2: "+img_out[2].getTitle());
-        	if (merge) IJ.log("Mask: "+img_out[1].getTitle());
-        	if (rgb) IJ.log("RGB merge");
-        	if (dupl) IJ.log("Stack 1 was duplicated");
+        	IJ.log("Stack 2: "+img_out[1].getTitle());
+        	IJ.log("Stack 3: "+img_out[2].getTitle());
+        	if (merge) IJ.log("Mask: "+img_out[3].getTitle());
         	if (thresh) 
         		{
         		if (perc) IJ.log("Percentile thresholding, factor "+IJ.d2s(factor,2));
@@ -873,7 +798,6 @@ public class Mask_Generator implements PlugIn
             	if (manual) IJ.log("Manual substacks: "+IJ.d2s(nBins,0));
             	else IJ.log("Automatic substacks, minimum: "+IJ.d2s(cutOff,0));
         		}
-        	if (ratio) IJ.log("Ratio image used");
         	}
         
         return img_out;

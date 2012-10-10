@@ -62,7 +62,7 @@ public class Ratio_Calculator_2 implements PlugIn
     /** Keep source files open; set in <code>chooseImages</code> 
     * <br>If <code>false</code> ImageJ might occasionally crash
     */
-    private boolean keepFiles = false; // Keep source files open
+    private boolean keepFiles = true; // Keep source files open
     /** Save all generated files; set in <code>chooseImages</code>
     * @see saveDir
     */
@@ -1609,7 +1609,7 @@ public class Ratio_Calculator_2 implements PlugIn
             {
     		gd.setInsets(20,20,0);
             gd.addCheckbox("Use mask for statistics, plots and ratio image", mask);
-            gd.addChoice("Mask:", image_titles, image_titles[2]);
+            gd.addChoice("Mask:", image_titles, image_titles[4]);
             }
         gd.addMessage("Calculation of statistics, a histogram or a scatter plot without a mask is not recommended.");
 

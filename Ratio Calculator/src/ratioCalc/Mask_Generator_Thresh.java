@@ -742,12 +742,12 @@ public class Mask_Generator_Thresh implements PlugIn
             {
             if (open_images.length>2)
                 {
-                gd.addChoice("Stack 2:", image_titles, image_titles[1]);
+                gd.addChoice("Stack 2:", image_titles, image_titles[2]);
                 gd.addChoice("Mask:", image_titles, image_titles[2]);
                 }
             else
                 {
-                gd.addChoice("Mask:", image_titles, image_titles[1]);
+                gd.addChoice("Mask:", image_titles, image_titles[2]);
                 }
             if (open_images.length>2)
                 {

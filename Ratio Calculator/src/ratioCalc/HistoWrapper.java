@@ -4,8 +4,8 @@ import ij.measure.ResultsTable;
 
 public class HistoWrapper 
 	{
-	protected ImagePlus img;
-	protected ResultsTable rt;
+	private ImagePlus img;
+	private ResultsTable rt;
 	
 	public HistoWrapper()
 		{

@@ -56,8 +56,8 @@ public class Mask_Generator_GFP implements PlugIn
     private String memoryError = "Out of memory...";
     private int threshold = -1; // thresholding value, re-set in execThresh() 
     // All of the following options can be set in chooseImages():
-    private double defaultThreshold = 0.95d; // default threshold for dialog (-> factor)
-    private boolean rgb = false; // merge channels
+    private double defaultThreshold = 0.8d; // default threshold for dialog (-> factor)
+    private boolean rgb = true; // merge channels
     private boolean dupl = false; // duplicate the first stack during RGB merge
     private boolean merge = true; // merge stack and (Amira) segmentation mask. If "false" only thresholding is performed.
     private boolean thresh = true; // threshold
@@ -67,7 +67,7 @@ public class Mask_Generator_GFP implements PlugIn
     private boolean manual = false; // manually define the number of substacks
     private boolean ratio = false; // input image is a ratio image from ratio calculator
     private boolean mask = false; // keep non-thresholded mask
-    private boolean keepAM = false; // keep (Amira) segmentation mask file. "false" can lead to crashes 
+    private boolean keepAM = true; // keep (Amira) segmentation mask file. "false" can lead to crashes 
     private boolean perc = false; // percentile thresholding (otherwise isodata); set by choice:Method
     private boolean logInfo = true; // Show parameters in the log window
     private double factor = 0; // thresholding factor (see default threshold)

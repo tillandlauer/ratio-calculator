@@ -25,6 +25,9 @@ import java.util.Arrays;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
+import org.apache.commons.math3.stat.StatUtils;
+import org.apache.commons.math3.stat.inference.MannWhitneyUTest;
+import org.apache.commons.math3.stat.inference.TestUtils;
 //import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 import jsc.independentsamples.MannWhitneyTest;
@@ -42,9 +45,9 @@ import jsc.independentsamples.MannWhitneyTest;
 //
 // Mann-Whitney U-test is done using the jsc.jar library from A.J. Bertie, http://www.jsc.nildram.co.uk
 // It is unclear how jsc.jar handles ties.
-// Because the sample sizes are clearly below 20, a normal approximatation of the U statistic is not feasible
+// Because the sample sizes are clearly below 20 in most cases, a normal approximation of the U statistic is not feasible
 // Yet due to the nature of the data very few ties are expected. Therefore reliable exact p-values should be calculated.
-// In dubious situations the test should be repeated in a more advaned statistical program.  
+// In dubious situations the test should be repeated in a more advanced statistical program.  
 //
 // For statistics median values are used
 // Uncertainties:
@@ -52,7 +55,7 @@ import jsc.independentsamples.MannWhitneyTest;
 // Standard Error of the Median = s = (a-b) / 3.4641; a = (n/2 + sqrt(3n)/n) th observation, b = (n/2 - sqrt(3n)/n) th observation, rounded up to the next number 
 // Source: Lothar Sachs, Angewandte Statistik, 11. Auflage 2003, S. 160.
 //
-// Error propagation according to: Lothar Papula, Mathematik f√ºr Ingenieure und Naturwissenschaftler Band 3, 5. Auflage 2008, Kapitel 4.3, Seite 678ff: Gau√üsches Fehlerfortpflanzungsgesetz
+// Error propagation according to: Lothar Papula, Mathematik für Ingenieure und Naturwissenschaftler Band 3, 5. Auflage 2008, Kapitel 4.3, Seite 678ff: Gaußsches Fehlerfortpflanzungsgesetz
 // For the combination of two uncertainties x,y:     e = SQRT((x/2)^2 + (y/2)^2)
 // For the combination of three uncertainties x,y,z: e = SQRT((x/3)^2 + (y/3)^2 + (z/3)^2)
 //
@@ -92,9 +95,9 @@ public class Ratio_Analysis implements PlugIn
     private int nFiles = 8; // number of files to be opened
 //    private int compGroups = 0; // option to arrange comparative statistics into groups; *currently disabled*
     private boolean sd = true; // calculate/show standard errors
-    private boolean statsMean = true; // use mean instead of median for statistics
+    private boolean statsMean = false; // use mean instead of median for statistics
     private boolean stats_mad = false; // use MAD (median absolute deviation) for statistics
-    private boolean histo_med = false; // use median for histograms
+    private boolean histo_med = true; // use median for histograms
     private static boolean oldFormat = false; // read statistics files in the old format (for compatibility)
     private String plottitle = "Ratios";
     private String axislabel = "ratios";
@@ -195,11 +198,11 @@ public class Ratio_Analysis implements PlugIn
                     if (axislabel!="") tp.append("set xlabel \""+axislabel+"\" offset +0,1 tc rgb \"#062356\"");
                     tp.append("set ylabel \"frequency\" offset +2,0 tc rgb \"#062356\"");
                     tp.append("set xrange [1:128]");
-                    tp.append("set yrange [0:4096]");
+                    tp.append("set yrange [0:450000]");
                     tp.append("set style line 10 lt 0 lc rgb \"#808080\"");
                     tp.append("set border 3 linestyle 10");
                     tp.append("set xtics 4 tc rgb \"#113577\" nomirror rotate by -45");
-                    tp.append("set ytics 200 tc rgb \"#113577\" nomirror");
+                    tp.append("set ytics 10000 tc rgb \"#113577\" nomirror");
                     tp.append("set tics front out");
                     tp.append("set style line 11 lt 3 lc rgb \"#99bbf9\" lw 0.5");
                     tp.append("set style fill solid 0.9 border");
@@ -253,11 +256,11 @@ public class Ratio_Analysis implements PlugIn
                     if (axislabel!="") tp.append("set xlabel \""+axislabel+"\" offset +0,1 tc rgb \"#062356\"");
                     tp.append("set ylabel \"frequency\" offset +2,0 tc rgb \"#062356\"");
                     tp.append("set xrange [0:128]");
-                    tp.append("set yrange [0:4096]");
+                    tp.append("set yrange [0:450000]");
                     tp.append("set style line 10 lt 0 lc rgb \"#808080\"");
                     tp.append("set border 3 linestyle 10");
                     tp.append("set xtics 4 tc rgb \"#113577\" nomirror");
-                    tp.append("set ytics 200 tc rgb \"#113577\" nomirror");
+                    tp.append("set ytics 10000 tc rgb \"#113577\" nomirror");
                     tp.append("set xtic rotate by -45 scale 0");
                     tp.append("set tics front out");
                     tp.append("set style line 11 lt 3 lc rgb \"#99bbf9\" lw 0.5");
@@ -294,26 +297,33 @@ public class Ratio_Analysis implements PlugIn
             ImageStack stack = new ImageStack();
             ImagePlus imp; // temp image for the input histograms as well as the output image
             ImageProcessor ip;
+            boolean noFiles = false;
             for (int i=0; i<nFiles; i++) // combine all histograms into a stack
                 {
-                if (i<9) inputname = "0"+(i+1)+" Histogram plot.tif";
-                else inputname = (i+1)+" Histogram plot.tif";          
-                imp = inFile.openTiff(directory, inputname);
-                if (imp==null) return false;
-                ip = imp.getProcessor(); 
-                if (i==0) stack = new ImageStack(ip.getWidth(), ip.getHeight());
-                stack.addSlice(null, ip); // add histogram to stack
+                if (!noFiles)
+	            	{
+	                if (i<9) inputname = "0"+(i+1)+" Histogram plot.tif";
+	                else inputname = (i+1)+" Histogram plot.tif";          
+	                imp = inFile.openTiff(directory, inputname);
+	                if (imp==null) noFiles=true;
+                    ip = imp.getProcessor(); 
+                    if (i==0) stack = new ImageStack(ip.getWidth(), ip.getHeight());
+                    stack.addSlice(null, ip); // add histogram to stack
+                	}
                 }
-            imp = new ImagePlus("Histograms", stack); // create image for the stacks          
-            MontageMaker mm = new MontageMaker(); // make a montage of the files
-            if (nFiles < 6) img_out = mm.makeMontage2(imp, nFiles, 1, 0.5, 1, nFiles, 1, 1, false);
-            else if (nFiles == 6) img_out = mm.makeMontage2(imp, 2, 3, 0.5, 1, nFiles, 1, 1, false);
-            else if (nFiles < 11) img_out = mm.makeMontage2(imp, (int)Math.round(nFiles/2.0), 2, 0.5, 1, nFiles, 1, 1, false);
-            else img_out = mm.makeMontage2(imp, (int)Math.round(nFiles/3.0), 3, 0.5, 1, nFiles, 1, 1, false);
-            img_out.setTitle("Histograms");
-            outFile = new FileSaver(img_out);
-            outFile.saveAsTiff(directory+"00 Histograms.tif");
-            } // end of job=0 (histograms)
+            if (!noFiles)
+	        	{
+	            imp = new ImagePlus("Histograms", stack); // create image for the stacks          
+	            MontageMaker mm = new MontageMaker(); // make a montage of the files
+	            if (nFiles < 6) img_out = mm.makeMontage2(imp, nFiles, 1, 0.5, 1, nFiles, 1, 1, false);
+	            else if (nFiles == 6) img_out = mm.makeMontage2(imp, 2, 3, 0.5, 1, nFiles, 1, 1, false);
+	            else if (nFiles < 11) img_out = mm.makeMontage2(imp, (int)Math.round(nFiles/2.0), 2, 0.5, 1, nFiles, 1, 1, false);
+	            else img_out = mm.makeMontage2(imp, (int)Math.round(nFiles/3.0), 3, 0.5, 1, nFiles, 1, 1, false);
+	            img_out.setTitle("Histograms");
+	            outFile = new FileSaver(img_out);
+	            outFile.saveAsTiff(directory+"00 Histograms.tif");
+	        	}
+	        } // end of job=0 (histograms)
             
         if (job==1 || all) // basic statistics
             {
@@ -336,7 +346,7 @@ public class Ratio_Analysis implements PlugIn
             double[] median = new double[data.length];
             double[] sem = new double[data.length]; // standard error
             double[] mad = new double[data[0].length]; // used for calculating the median absolute deviation
-            double[] invMed = new double[data.length]; // inverse, unifomly distributed values (see below)
+            double[] invMed = new double[data.length]; // inverse, uniformly distributed values (see below)
 
             ResultsTable rt = ResultsTable.getResultsTable(); // output
             rt.reset();
@@ -372,19 +382,19 @@ public class Ratio_Analysis implements PlugIn
             // this way values are uniformly distributed around 1
             // The original values are used for statistics (standard results, line 1)
 
-//            DescriptiveStatistics stats = new DescriptiveStatistics();            
             
             for (int i=0; i<data.length; i++) // data[x][y]: [x]=min,q1,med,q3,max; [y]=file 
                 {
             	if (statsMean)
 	            	{
 //            		median[i] = getMean(data[i]); // get the mean for each value (min,q1‚median,q3,max)
-//            		median[i] = math3.(data[i]); // get the mean for each value (min,q1‚median,q3,max)
+            		median[i] = StatUtils.mean(data[i]); // get the mean for each value (min,q1‚median,q3,max)
 	            	}
             	else // median
             		{
-	            	Arrays.sort(data[i]);
-	                median[i] = getMedian(data[i]); // get the median for each value (min,q1‚median,q3,max)
+//	            	Arrays.sort(data[i]);
+//	                median[i] = getMedian(data[i]); // get the median for each value (min,q1‚median,q3,max)
+	                median[i] = StatUtils.percentile(data[i], 50); // get the median for each value (min,q1‚median,q3,max)
             		}    
                 if (oldFormat) // old file format, obsolete
                     {
@@ -397,15 +407,20 @@ public class Ratio_Analysis implements PlugIn
                     else invMed[i] = median[i];
                     }
 
-                if (stats_mad)
+                if (statsMean)
+                	{
+            		sem[i] = Math.sqrt(StatUtils.variance(data[i], median[i]))/Math.sqrt(data[i].length); // get the SEM for each value (min,q1‚median,q3,max)                	
+                	}
+                else if (stats_mad)
                     {
                     for (int j=0; j<data[0].length; j++) // calc median absolute deviation (mad)
                         {
                         if (oldFormat) mad[j] = Math.abs(invMed[i]-1.0d/(2-data[i][j]));
                         else mad[j] = Math.abs(median[i]-data[i][j]); // the difference between the individual values in each file and the median
                         }
-                    Arrays.sort(mad);
-                    sem[i] = getMedian(mad); // mad = the median of the differences of the individual values to the median              
+	                sem[i] = StatUtils.percentile(mad, 50); // mad = the median of the differences of the individual values to the median
+//                    Arrays.sort(mad);
+//                    sem[i] = getMedian(mad); // mad = the median of the differences of the individual values to the median              
                     }
                 else
                     {
@@ -1091,7 +1106,7 @@ public class Ratio_Analysis implements PlugIn
             tp.append("set logscale y 2");
             tp.append("set style line 10 lt 0 lc rgb \"#808080\"");
             tp.append("set border 3 linestyle 10");
-            tp.append("set ytics tc rgb \"#113577\" nomirror");
+            tp.append("set ytics (\"1/256\" 0.00390625, \"1/128\" 0.0078125, \"1/64\" 0.015625, \"1/32\" 0.03125, \"1/16\" 0.0625, \"1/8\" 0.125, \"1/4\" 0.25, \"1/2\" 0.5, \"1/1\" 1, \"2/1\" 2, \"4/1\" 4, \"8/1\" 8, \"16/1\" 16, \"32/1\" 32, \"64/1\" 64, \"128/1\" 128, \"256/1\" 256) tc rgb \"#113577\" nomirror");
 /*            String tics = IJ.d2s(yLow,1); // automatic generation of y-tics
             long yMax = Math.round((yHigh-yLow)*10);
             for (long i=0; i<yMax; i++)
@@ -1237,14 +1252,14 @@ public class Ratio_Analysis implements PlugIn
             // second set: masked subset of ratios (positive for GFP) within that neuropile, in the same brains as the first set.   
 
             // files created:
-            // 2x 00 Statistics Summary XXX 3.xls   - Min,Q1,Median,Q3,Max. 1st line: Standard results, 2nd line: SEM/MADs, 3rd line: Combined results
-            // 2x 00 Statistics Summary XXX 1-1.xls - Min,Q1,Median,Q3,Max. 1st line: Standard results, 2nd line: SEM/MADs
-            // 2x 00 Statistics Summary XXX 2.xls   - Value, SEM/MAD. 1st line: Quartile 1, 2nd line: Median, 3rd line: Quartile 3. 
-            // 2x 00 Statistics Summary XXX 1-2.xls - Min, SEM/MAD
-            // 2x 00 Statistics Summary XXX 1-3.xls - Q1, SEM/MAD
-            // 2x 00 Statistics Summary XXX 1-4.xls - Med, SEM/MAD
-            // 2x 00 Statistics Summary XXX 1-5.xls - Q3, SEM/MAD
-            // 2x 00 Statistics Summary XXX 1-6.xls - Max, SEM/MAD
+            // 2x 00 Statistics Summary XX 3.xls   - Min,Q1,Median,Q3,Max. 1st line: Standard results, 2nd line: SEM/MADs, 3rd line: Combined results
+            // 2x 00 Statistics Summary XX 1-1.xls - Min,Q1,Median,Q3,Max. 1st line: Standard results, 2nd line: SEM/MADs
+            // 2x 00 Statistics Summary XX 2.xls   - Value, SEM/MAD. 1st line: Quartile 1, 2nd line: Median, 3rd line: Quartile 3. 
+            // 2x 00 Statistics Summary XX 1-2.xls - Min, SEM/MAD
+            // 2x 00 Statistics Summary XX 1-3.xls - Q1, SEM/MAD
+            // 2x 00 Statistics Summary XX 1-4.xls - Med, SEM/MAD
+            // 2x 00 Statistics Summary XX 1-5.xls - Q3, SEM/MAD
+            // 2x 00 Statistics Summary XX 1-6.xls - Max, SEM/MAD
             // 2x statscript1_XXX.plt - GnuPlot script box-whisker plot
             // 2x statscript2_XXX.plt - GnuPlot script box plot
             
@@ -1792,9 +1807,16 @@ public class Ratio_Analysis implements PlugIn
                     } 
                 catch (NumberFormatException e) 
                     { 
-                    IJ.error("Unknown file format: \""+directory+inputname+"\"");
-                    return null; 
-                    } 
+                    try 
+	                    { 
+	                    data[i][k-1] = (int)Math.round(Double.valueOf(part).doubleValue()); // read data
+	                    } 
+                    catch (NumberFormatException e2) 
+	                    { 
+	                    IJ.error("Unknown file format: \""+directory+inputname+"\"");
+	                    return null; 
+	                    } 
+                    }
                 } // bin read 
             } // all files read
 
@@ -2190,6 +2212,71 @@ public class Ratio_Analysis implements PlugIn
         tp.append("Bonferroni's adjustment to alpha ("+alpha+"): "+IJ.d2s(nTests,0)+" test(s) -> "+IJ.d2s(bon,9));
         tp.saveAs(directory+filename); // save file   
 
+        
+        // using apache commons
+        MannWhitneyUTest mwtA;       
+        t1 = 1; t2 = 1; // counter (test file 1 and test file 2)
+        fileCounter = 0; nTests = 0; // counter
+        filename = "00 Statistics Summary 5.txt"; // output file
+        tp = new TextPanel(); // content of output file
+        double pValue, uStat;
+        
+        for (int i=0; i<nFiles; i++) // compare all files with each other
+        {
+        fileCounter++;
+        for (int j=0; j<(nFiles-fileCounter); j++)
+            {
+            nTests++; // counts all tests
+            t2++;
+            tp.append("Mann-Whitney U-test of "+xTitle[t1-1]+" ("+IJ.d2s(t1,0)+") vs "+xTitle[t2-1]+" ("+IJ.d2s(t2,0)+"):");
+            mwtA = new MannWhitneyUTest();
+            pValue = mwtA.mannWhitneyUTest((double[])data.get(t1-1),(double[])data.get(t2-1)); // MWU test of two files
+            tp.append("Two-tailed exact p value: "+IJ.d2s(pValue,9));
+            uStat = mwtA.mannWhitneyU((double[])data.get(t1-1),(double[])data.get(t2-1)); // MWU test of two files
+            tp.append("U statistic: "+IJ.d2s(uStat,0));
+            tp.append("");
+            }
+        t1++;
+        t2=t1;
+        }
+        // Bonferroni correction
+        alpha = 0.05d;
+        bon = alpha/nTests;
+        tp.append("Bonferroni's adjustment to alpha ("+alpha+"): "+IJ.d2s(nTests,0)+" test(s) -> "+IJ.d2s(bon,9));
+        tp.saveAs(directory+filename); // save file   
+        
+        
+        // t-test
+        t1 = 1; t2 = 1; // counter (test file 1 and test file 2)
+        fileCounter = 0; nTests = 0; // counter
+        filename = "00 Statistics Summary 6.txt"; // output file
+        tp = new TextPanel(); // content of output file
+        
+        for (int i=0; i<nFiles; i++) // compare all files with each other
+        {
+        fileCounter++;
+        for (int j=0; j<(nFiles-fileCounter); j++)
+            {
+            nTests++; // counts all tests
+            t2++;
+            tp.append("T-test of "+xTitle[t1-1]+" ("+IJ.d2s(t1,0)+") vs "+xTitle[t2-1]+" ("+IJ.d2s(t2,0)+"):");
+            pValue = TestUtils.tTest((double[])data.get(t1-1),(double[])data.get(t2-1)); // MWU test of two files
+            tp.append("Two-tailed exact p value: "+IJ.d2s(pValue,9));
+            uStat = TestUtils.t((double[])data.get(t1-1),(double[])data.get(t2-1)); // MWU test of two files
+            tp.append("T statistic: "+IJ.d2s(uStat,0));
+            if (TestUtils.tTest((double[])data.get(t1-1),(double[])data.get(t2-1), bon)) tp.append("Significant.");
+            else tp.append("Not significant.");
+            tp.append("");
+            }
+        t1++;
+        t2=t1;
+        }
+        // Bonferroni correction
+        tp.append("Bonferroni's adjustment to alpha ("+alpha+"): "+IJ.d2s(nTests,0)+" test(s) -> "+IJ.d2s(bon,9));
+        tp.saveAs(directory+filename); // save file   
+        
+        
+        
         return true;
         } // end of statTest()
 
@@ -2277,36 +2364,36 @@ public class Ratio_Analysis implements PlugIn
             case 3: terminal = terminalC[3];   
                     break;
             }
-  
-        if(!manual)
-            {
-            DirectoryChooser sd = new DirectoryChooser("Where do you want to save your file?");
-            directory = sd.getDirectory();
-            if (directory==null) return false;
-            }
-        else
-            {
-            directory = dirtemp;
-            }
 
         if (job==3) all=true; // run all basic analyses     
         
         if (job==0 || job==1 || job==3 || job==5) // if histogram or statistics shall be calculated
             {
-            if (nFiles<4 && (!stats_mad || histo_med))
+            if (!statsMean && nFiles<4 && (!stats_mad || histo_med))
                 {
                 IJ.showMessage("Standard error of the median can only be calculated with data from at least 4 files; switching to means (histogram) and MAD (statistics) instead.");
                 stats_mad = true;
                 histo_med = false;
                 }     
             }
-
+        
+        if(!manual)
+            {
+            DirectoryChooser sd = new DirectoryChooser("Location of files:");
+            directory = sd.getDirectory();
+            if (directory==null) return false;
+            }
+        else
+            {
+            directory = dirtemp;
+            }       
+        
         if (job==4) // comparative statistics
             { // show another dialog for the x-labels
             if (nFiles<2) return false;
             String[] field_temp = new String[nFiles];
-            field_temp[0] = "BRP-NT"; // create the text fields for the x-labels
-            field_temp[1] = "RBP-CT";
+            field_temp[0] = "BrpNT"; // create the text fields for the x-labels
+            field_temp[1] = "RBP";
             if (nFiles>2) field_temp[2] = "Syd-1";
             if (nFiles>3)
                 {
