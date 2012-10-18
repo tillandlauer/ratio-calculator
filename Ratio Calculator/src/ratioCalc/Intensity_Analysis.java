@@ -15,13 +15,11 @@ import ij.text.TextPanel;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import org.apache.commons.math3.stat.StatUtils;
-
 // _____________________________________________________________________________________________________________
 //
-// --------------------
+// -----------------------
 // Intensity Analysis v1.0
-// --------------------
+// -----------------------
 //
 // Till Andlauer (till@andlauer.net)
 // Date: 12-10-09
@@ -41,8 +39,10 @@ import org.apache.commons.math3.stat.StatUtils;
 // Source: Lothar Sachs, Angewandte Statistik, 11. Auflage 2003, S. 160.
 //
 // Error propagation according to: Lothar Papula, Mathematik für Ingenieure und Naturwissenschaftler Band 3, 5. Auflage 2008, Kapitel 4.3, Seite 678ff: Gaußsches Fehlerfortpflanzungsgesetz
-// For the combination of two uncertainties x,y:     e = SQRT((x/2)^2 + (y/2)^2))
-// For the combination of three uncertainties x,y,z: e = SQRT((x/3)^2 + (y/3)^2 + (z/3)^2))
+// Sum of two values X,Y with uncertainties sX,sY:        e = SQRT((sX/2)^2 + (sY/2)^2))
+// Sum of three values X,Y,Z with uncertainties sX,sY,sZ: e = SQRT((sX/3)^2 + (sY/3)^2 + (sZ/3)^2))
+// Division of two values X,Y with uncertainties sX,sY:        e = SQRT((sX/X)^2 + (sY/Y)^2))
+// Division of three values X,Y,Z with uncertainties sX,sY,sZ: e = SQRT((sX/Y)^2 + (sY/Y)^2 + (sZ/Z)^2))
 //
 // Current format of statistics files:
 // -----------------------------------
@@ -256,17 +256,20 @@ public class Intensity_Analysis implements PlugIn
 	            for (int i=0; i<data.length; i++) // data[x][y]: [x]=min,q1,med,q3,max; [y]=file 
 	                {
 	            	if (statsMean)
-		            	{
-	            		median[i] = StatUtils.mean(data[i]); // get the mean for each value (min,q1‚median,q3,max)
+		            	{            		
+	            		median[i] = Ratio_Statistics.getMean(data[i]); // get the mean for each value (min,q1‚median,q3,max)
+//	            		median[i] = StatUtils.mean(data[i]); // get the mean for each value (min,q1‚median,q3,max)
 		            	}
 	            	else // median
 	            		{
-		                median[i] = StatUtils.percentile(data[i], 50); // get the median for each value (min,q1‚median,q3,max)
+	            		median[i] = Ratio_Statistics.getMedian(data[i]); // get the mean for each value (min,q1‚median,q3,max)
+//		                median[i] = StatUtils.percentile(data[i], 50); // get the median for each value (min,q1‚median,q3,max)
 	            		}    
 	
 	                if (statsMean)
 	                	{
-	            		sem[i] = Math.sqrt(StatUtils.variance(data[i], median[i]))/Math.sqrt(data[i].length); // get the SEM for each value (min,q1‚median,q3,max)                	
+	            		sem[i] = Ratio_Statistics.getSD(data[i],median[i])/Math.sqrt(data[i].length); // get the SEM for each value (min,q1‚median,q3,max)                	
+//	            		sem[i] = Math.sqrt(StatUtils.variance(data[i], median[i]))/Math.sqrt(data[i].length); // get the SEM for each value (min,q1‚median,q3,max)                	
 	                	}
 	                else if (!statsSEMed) // MAD
 	                    {
@@ -274,7 +277,8 @@ public class Intensity_Analysis implements PlugIn
 	                        {
 	                        mad[j] = Math.abs(median[i]-data[i][j]); // the difference between the individual values in each file and the median
 	                        }
-		                sem[i] = StatUtils.percentile(mad, 50); // mad = the median of the differences of the individual values to the median
+		                sem[i] = Ratio_Statistics.getMedian(mad); // mad = the median of the differences of the individual values to the median
+//		                sem[i] = StatUtils.percentile(mad, 50); // mad = the median of the differences of the individual values to the median
 	                    }
 	                else
 	                    {
@@ -374,7 +378,7 @@ public class Intensity_Analysis implements PlugIn
         	if (ratios)
 	        	{
                 // NOTE: error propagation according to: Lothar Papula, Mathematik für Ingenieure und Naturwissenschaftler Band 3, 5. Auflage 2008. Kapitel 4.3, Seite 678ff: Gaußsches Fehlerfortpflanzungsgesetz
-                // for the combination of two uncertainties x,y:     e = SQRT((x/2)^2 + (y/2)^2))
+        		// Division of two values X,Y with uncertainties sX,sY:        e = SQRT((sX/X)^2 + (sY/Y)^2))
 //        	    ratiosToDo = new int[3][2]; // supports three different ratios
 //	            ratioData = new double[nChannels][2][data.length]; // mean and sem
 	            ResultsTable rt = ResultsTable.getResultsTable(); // output
@@ -388,7 +392,7 @@ public class Intensity_Analysis implements PlugIn
             		for (int data=0; data<ratioData[0][0].length; data++)
 	            		{
 		            	ratioResults[comp][0][data] = ratioData[ratiosToDo[comp][0]][0][data] / ratioData[ratiosToDo[comp][1]][0][data];
-		            	ratioResults[comp][1][data] = Math.sqrt(Math.pow(ratioData[ratiosToDo[comp][0]][1][data]/2.0d,2)+Math.pow(ratioData[ratiosToDo[comp][1]][1][data]/2.0d,2));    
+		            	ratioResults[comp][1][data] = Math.sqrt(Math.pow(ratioData[ratiosToDo[comp][0]][1][data]/ratioData[ratiosToDo[comp][0]][0][data],2)+Math.pow(ratioData[ratiosToDo[comp][1]][1][data]/ratioData[ratiosToDo[comp][1]][0][data],2));    
 		            	}
 
     	            rt.incrementCounter();

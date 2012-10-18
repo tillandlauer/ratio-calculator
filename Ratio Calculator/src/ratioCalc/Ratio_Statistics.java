@@ -36,6 +36,19 @@ public class Ratio_Statistics
         }
 
 
+    public static double getMean(double[] data) // used for calculating the mean histogram, calculates the average of a bin 
+	    {
+		int n = data.length;
+		double sum=0.0d;
+		for (int i=0; i<n; i++) 
+		  {
+		  sum += data[i];
+		  }
+		double result = sum/n;
+		return result;
+	    }
+
+
     public static double getSD(int[] data, double mean) // used for calculating the standard deviation of a mean histogram bin 
         {
 		int n = data.length;
@@ -48,49 +61,77 @@ public class Ratio_Statistics
 		return stdDev;
         }
 
-
-     public static int getMedian(int[] matrix) // Get median value of a matrix. The input matrix already has to be sorted. Used for calculating histogram in createFile().
-        {
-        int medPos = (matrix.length+1)/2;
-        int median = 0;
-        
-        if (matrix.length % 2 == 1) // odd size
-            {
-            median = matrix[(int)medPos-1];
-            }   
-        else // even size
-            {
-            int bM = (int)Math.round(medPos-1.5);
-            int aM = (int)Math.round(medPos-0.5);
-            int vbm = matrix[bM];
-            int vam = matrix[aM];
-            median = (int)Math.round((vbm+vam)/2.0d);
-            }   
-        return median;        
-        }
+    public static double getSD(double[] data, double mean) // used for calculating the standard deviation of a mean histogram bin 
+	    {
+		int n = data.length;
+		double sum=0.0d;
+		for (int i=0; i<n; i++) 
+		  {
+		  sum += (data[i]-mean)*(data[i]-mean);
+		  }
+		double stdDev = Math.sqrt(sum/(n-1));
+		return stdDev;
+	    }     
 
 
-     public static double getMedian(double[] matrix) // Get median value of a matrix. The input matrix already has to be sorted. Used for calculating statistics in createFile().
-        {
-        double medPos = (matrix.length+1)/2;
-        double median = 0;
-        
-        if (matrix.length % 2 == 1) // odd size
-            {
-            median = matrix[(int)medPos-1];
-            }   
-        else // even size
-            {
-            int bM = (int)Math.round(medPos-1.5);
-            int aM = (int)Math.round(medPos-0.5);
-            double vbm = matrix[bM];
-            double vam = matrix[aM];
-            median = (vbm+vam)/2.0d;
-            }   
-        return median;        
-        }
+    /**
+     * Calculates the median of an array; the input already has to be sorted
+     * <br>In case of ties the lower value is chosen
+     *
+     * @param matrix <code>double[]</code> array
+     * @return Median 
+	  * @see calcStats
+     */
+    protected static double getMedian(double[] matrix) // Get median value of a matrix. The input matrix already has to be sorted. Used by calcStats().
+       {
+       double medPos = (matrix.length+1)/2.0d;
+       double median = 0;
+       
+       if (matrix.length % 2 == 1) // odd size
+           {
+           median = matrix[(int)medPos-1];
+           }   
+       else // even size
+           {
+           int bM = (int)Math.round(medPos-1.5d);
+           int aM = (int)Math.round(medPos-0.5d);
+           double vbm = matrix[bM];
+           double vam = matrix[aM];
+           median = (vbm+vam)/2.0d;
+           }   
+       return median;        
+       }   
 
 
+    /**
+     * Calculates the median of an array; the input already has to be sorted
+     * <br>In case of ties the lower value is chosen
+     *
+     * @param matrix <code>int[]</code> array
+     * @return Median 
+	  * @see calcStats
+     */
+    protected static double getMedian(int[] matrix) // Get median value of a matrix. The input matrix already has to be sorted. Used by calcStats().
+       {
+       double medPos = (matrix.length+1)/2.0d;
+       double median = 0;
+       
+       if (matrix.length % 2 == 1) // odd size
+           {
+           median = matrix[(int)medPos-1];
+           }   
+       else // even size
+           {
+           int bM = (int)Math.round(medPos-1.5d);
+           int aM = (int)Math.round(medPos-0.5d);
+           double vbm = matrix[bM];
+           double vam = matrix[aM];
+           median = (vbm+vam)/2.0d;
+           }   
+       return median;        
+       }
+
+    
     public static double getSEMed(int[] data) // get standard error of the median. Used for calculating histogram in createFile().
         {
         // standard error of the median according to: Lothar Sachs, Angewandte Statistik, 11. Auflage 2003, S. 160. s = (a-b) / 3.4641; a = (n/2 + sqrt(3n)/n) th observation, b = (n/2 - sqrt(3n)/n) th observation, rounded up to the next number. 
@@ -285,5 +326,72 @@ public class Ratio_Statistics
 	        
 	    return true;
 	    } // end of statTestMWU()
+
+
+    /**
+     * Divides an array into two halves; the input already has to be sorted
+     *
+     * @param matrix <code>double[]</code> array
+     * @return <code>double[x][y]</code>, <code>x=0</code>: lower half, <code>x=1</code>: upper half 
+	  * @see calcStats
+     */
+    protected static double[][] getHalf(double[] matrix) // Divide a matrix into two halves. The input matrix already has to be sorted. Used by calcStats().
+       {        
+       double[] result_below;
+       double[] result_above;
+
+       if (matrix.length % 2 == 1) // odd size
+           {
+           int size = (int)(matrix.length-1)/2;
+           result_below = new double[size];
+           result_above = new double[size];
+           for (int i=0; i<size; i++)
+               {
+               result_below[i] = matrix[i];
+               result_above[i] = matrix[size+1+i];
+               }
+           }   
+       else // even size
+           {
+           int size = (int)Math.round(((matrix.length-1)/2.0d)-0.5d);
+           result_below = new double[size];
+           result_above = new double[size];
+           for (int i=0; i<size; i++)
+               {
+               result_below[i] = matrix[i];
+               result_above[i] = matrix[size+i];
+               }
+           }   
+
+       double[][] result = new double[2][result_below.length];
+       result[0] = result_below;
+       result[1] = result_above;    
+           
+       return result;        
+       }
+
+
+    /**
+     * Calculates the min/max values of an array
+     *
+     * @param matrix <code>double[]</code> array
+     * @return <code>double[x]</code>, <code>x=0</code>: minimum, <code>x=1</code>: maximum 
+	  * @see calcStats
+     */
+    protected static double[] getMinMax(double[] matrix) // Get min/max values of a matrix. Used by calcStats().
+       {
+       double[] minMax = new double[2];
+       minMax[0] = matrix[0];
+       minMax[1] = matrix[0];
+         
+       for (int i=0; i<matrix.length; i++)
+           {  
+           if (matrix[i] < minMax[0]) minMax[0] = matrix[i];
+           if (matrix[i] > minMax[1]) minMax[1] = matrix[i];
+           }  
+
+       return minMax;        
+       }
+   
     
     } 

@@ -1,6 +1,12 @@
 package ratioCalc;
 import ij.IJ;
+import ij.ImagePlus;
+import ij.WindowManager;
+import ij.gui.NewImage;
+import ij.measure.ResultsTable;
+import ij.process.ImageProcessor;
 
+import java.awt.image.IndexColorModel;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -376,4 +382,135 @@ public class Ratio_InOut
 
         return data; 
         } // end of loadStatList()
+    
+
+
+    /**
+     * Save a ResultsTable
+     *
+     * @param rt ResultsTable
+     * @param tableTitle Filename
+     */
+    protected void saveTable(ResultsTable rt, String tableTitle) // Save a results table
+        {
+    	String saveError = "File "+tableTitle+" couldn't be saved.";
+        try 
+            { 
+//            SaveDialog sd = new SaveDialog("Save "+tableTitle, tableTitle, ".xls");
+            rt.saveAs(directory+tableTitle+".xls");
+            } 
+        catch (IOException e) 
+            {
+            IJ.error(saveError); 
+            } 
+        ij.text.TextWindow tw = ResultsTable.getResultsWindow(); 
+        tw.close(false);
+        }
+
+
+    /**
+     * Spectrum lut.
+     *
+     * @param img the img
+     * @return the image plus
+     */
+    public static ImagePlus spectrumLUT(ImagePlus img, int maxPossibleValue, boolean displayLUT) // change the lookup table to ratio coding
+        {
+		byte[][] rgb = new byte[3][256]; // array of the rgb values for the LUT
+		int r = 0;
+		int g = 255;
+        int b = 255;
+        int i = 0;
+        
+		for (i=0; i<42; i++) // cyan to blue
+            {
+            rgb[0][i] = (byte)r;
+            rgb[1][i] = (byte)g;
+            rgb[2][i] = (byte)b;
+            g-=6;
+            }
+        g=0;
+
+		for (i=42; i<85; i++) // blue to magenta
+            {
+            rgb[0][i] = (byte)r;
+            rgb[1][i] = (byte)g;
+            rgb[2][i] = (byte)b;
+            r+=6;
+            }
+        r=255;
+
+		for (i=85; i<128; i++) // magenta to black
+            {
+            rgb[0][i] = (byte)r;
+            rgb[1][i] = (byte)g;
+            rgb[2][i] = (byte)b;
+            r-=6;
+            b-=6;
+            }
+        r=g=b=0;
+
+		for (i=128; i<171; i++) // black to green
+            {
+            rgb[0][i] = (byte)r;
+            rgb[1][i] = (byte)g;
+            rgb[2][i] = (byte)b;
+            g+=6;
+            }
+        g=255;
+
+		for (i=171; i<213; i++) // green to yellow
+            {
+            rgb[0][i] = (byte)r;
+            rgb[1][i] = (byte)g;
+            rgb[2][i] = (byte)b;
+            r+=6;
+            }
+        r=255;
+
+		for (i=213; i<256; i++) // yellow to red
+            {
+            rgb[0][i] = (byte)r;
+            rgb[1][i] = (byte)g;
+            rgb[2][i] = (byte)b;
+            g-=6;
+            }
+        
+        if (displayLUT) // show the LUT as an extra image
+            {
+            int height = 10; // height of image
+            String imp_out_title = "LUT";
+            ImagePlus imp_out = NewImage.createRGBImage(imp_out_title, rgb[0].length, height, 1, 1);
+            WindowManager.checkForDuplicateName = true; // add a number to the title if name already exists  
+
+            ImageProcessor ip_out = imp_out.getProcessor();
+            int bins = rgb[0].length; // number of colours
+            int binWidth = 1; // width for each colour
+            int picPos = 0; // counter within image
+            int values[] = new int[3]; // red, green, blue
+    
+            for(i=0; i<bins; i++)
+                {
+                for(int j=0; j<height; j++)
+                    {
+                    for (int k=0; k<binWidth; k++)
+                        {
+                        values[0] = rgb[0][i]&0xff;
+                        values[1] = rgb[1][i]&0xff;
+                        values[2] = rgb[2][i]&0xff;
+                        ip_out.putPixel(picPos+k,j,values);
+                        }
+                    }
+                picPos = picPos + binWidth; // move to next colour
+                }
+            imp_out.show();
+            }
+
+		IndexColorModel icm = new IndexColorModel(8, 256, rgb[0], rgb[1], rgb[2]); // create the LUT
+		img.getProcessor().setColorModel(icm); // apply the LUT
+        img.getProcessor().setMinAndMax(0,maxPossibleValue); // scale the LUT
+
+        return img; 
+        }
+    
     } 

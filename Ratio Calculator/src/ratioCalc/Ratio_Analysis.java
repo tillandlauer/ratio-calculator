@@ -56,8 +56,10 @@ import jsc.independentsamples.MannWhitneyTest;
 // Source: Lothar Sachs, Angewandte Statistik, 11. Auflage 2003, S. 160.
 //
 // Error propagation according to: Lothar Papula, Mathematik für Ingenieure und Naturwissenschaftler Band 3, 5. Auflage 2008, Kapitel 4.3, Seite 678ff: Gaußsches Fehlerfortpflanzungsgesetz
-// For the combination of two uncertainties x,y:     e = SQRT((x/2)^2 + (y/2)^2)
-// For the combination of three uncertainties x,y,z: e = SQRT((x/3)^2 + (y/3)^2 + (z/3)^2)
+// Sum of two values X,Y with uncertainties sX,sY:        e = SQRT((sX/2)^2 + (sY/2)^2))
+// Sum of three values X,Y,Z with uncertainties sX,sY,sZ: e = SQRT((sX/3)^2 + (sY/3)^2 + (sZ/3)^2))
+// Division of two values X,Y with uncertainties sX,sY:        e = SQRT((sX/X)^2 + (sY/Y)^2))
+// Division of three values X,Y,Z with uncertainties sX,sY,sZ: e = SQRT((sX/Y)^2 + (sY/Y)^2 + (sZ/Z)^2))
 //
 // Current format of statistics files:
 // -----------------------------------
@@ -95,9 +97,9 @@ public class Ratio_Analysis implements PlugIn
     private int nFiles = 8; // number of files to be opened
 //    private int compGroups = 0; // option to arrange comparative statistics into groups; *currently disabled*
     private boolean sd = true; // calculate/show standard errors
-    private boolean statsMean = false; // use mean instead of median for statistics
+    private boolean statsMean = true; // use mean instead of median for statistics
     private boolean stats_mad = false; // use MAD (median absolute deviation) for statistics
-    private boolean histo_med = true; // use median for histograms
+    private boolean histo_med = false; // use median for histograms
     private static boolean oldFormat = false; // read statistics files in the old format (for compatibility)
     private String plottitle = "Ratios";
     private String axislabel = "ratios";
@@ -1180,6 +1182,13 @@ public class Ratio_Analysis implements PlugIn
             filename = "statscript3.plt";
             tp = initFile(); // initialize the gnuplot script
 
+            xLabel =""; // create the labels for the x-axis
+            for (int i=0; i<(nFiles-1); i++)
+                {
+                xLabel += "\""+xTitle[i]+"\" "+(i+1)+", ";
+                }
+            xLabel += "\""+xTitle[(nFiles-1)]+"\" "+nFiles;
+            
             if (plottitle!="") tp.append("set title \""+plottitle+"\"");
             tp.append("set xlabel \"\" ");
             tp.append("set ylabel \"ratio\" offset +2,0 tc rgb \"#062356\"");
@@ -1378,15 +1387,15 @@ public class Ratio_Analysis implements PlugIn
             rt2.setPrecision(9);
 
             // calculate final uncertainties
-            // NOTE: error propagation according to: Lothar Papula, Mathematik f√ºr Ingenieure und Naturwissenschaftler Band 3, 5. Auflage 2008. Kapitel 4.3, Seite 678ff: Gau√üsches Fehlerfortpflanzungsgesetz
-            // for the combination of two uncertainties x,y:     e = SQRT((x/2)^2 + (y/2)^2)
-            // for the combination of three uncertainties x,y,z: e = SQRT((x/3)^2 + (y/3)^2 + (z/3)^2)
+	        // NOTE: Error propagation according to: Lothar Papula, Mathematik für Ingenieure und Naturwissenschaftler Band 3, 5. Auflage 2008, Kapitel 4.3, Seite 678ff: Gaußsches Fehlerfortpflanzungsgesetz
+	        // Division of two values X,Y with uncertainties sX,sY:        e = SQRT((sX/X)^2 + (sY/Y)^2))
+	        // Division of three values X,Y,Z with uncertainties sX,sY,sZ: e = SQRT((sX/Y)^2 + (sY/Y)^2 + (sZ/Z)^2))
             double[] finalSemN = new double[neuropil.length];
             double[] finalSemS = new double[neuropil.length];
             for (int i=0; i<neuropil.length; i++)
                 {
-                finalSemN[i] = Math.sqrt(Math.pow(semN[i]/2.0d,2)+Math.pow(reference[i+5][0]/2.0d,2));    
-                finalSemS[i] = Math.sqrt(Math.pow(semS[i]/3.0d,2)+Math.pow(semN[i]/3.0d,2)+Math.pow(reference[i+5][0]/3.0d,2));    
+                finalSemN[i] = Math.sqrt(Math.pow(semN[i]/medianN[i],2)+Math.pow(reference[i+5][0]/reference[i][0],2));    
+                finalSemS[i] = Math.sqrt(Math.pow(semS[i]/medianS[i],2)+Math.pow(semN[i]/medianN[i],2)+Math.pow(reference[i+5][0]/reference[i][0],2));    
                 }
 
             rt.incrementCounter();
