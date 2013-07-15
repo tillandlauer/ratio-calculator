@@ -7,6 +7,7 @@ import ij.gui.GenericDialog;
 import ij.gui.NewImage;
 import ij.io.DirectoryChooser;
 import ij.io.FileSaver;
+import ij.io.OpenDialog;
 import ij.io.Opener;
 import ij.measure.ResultsTable;
 import ij.plugin.MontageMaker;
@@ -83,6 +84,9 @@ import jsc.independentsamples.MannWhitneyTest;
 // Maintenance, compatibility adaptations, added comments, bug fixes (error propagation, normalized statistics)
 // Because normalized statistics is currently disabled, this option has not been tested and might contain bugs.
 //
+// v1.33
+// Added Fingerprints
+//
 // _____________________________________________________________________________________________________________
 
 public class Ratio_Analysis implements PlugIn
@@ -93,7 +97,7 @@ public class Ratio_Analysis implements PlugIn
     private boolean overview = false; // job=6
     private boolean chName = false; // for normalized statistics: use refFiles as input files
     // All of the following options can be set in chooseImages():
-    private int job = 3; // type of analysis to run; 0 = Histograms, 1 = Statistics, 2 = Scatter plots, 3 = All basic plots, 4 = comparative statistics, 5 = normalized statistics (*currently disabled*), 6 = histograms overview
+    private int job = 7; // type of analysis to run; 0 = Histograms, 1 = Statistics, 2 = Scatter plots, 3 = All basic plots, 4 = comparative statistics, 5 = normalized statistics (*currently disabled*), 6 = histograms overview, 7 = fingerprint
     private int nFiles = 8; // number of files to be opened
 //    private int compGroups = 0; // option to arrange comparative statistics into groups; *currently disabled*
     private boolean sd = true; // calculate/show standard errors
@@ -104,6 +108,7 @@ public class Ratio_Analysis implements PlugIn
     private String plottitle = "Ratios";
     private String axislabel = "ratios";
     private String directory = "/Users/till/"; // directory for saving files manually
+    private String inputFile = "00 Statistics Summary 1-1.xls"; // file to load for fingerprinting
     private boolean screen = true; // show results on screen
     private String terminal = "aqua"; // output of data (aqua/x11/windows/wxt)
     private boolean svg = true; // create .svg file
@@ -131,7 +136,30 @@ public class Ratio_Analysis implements PlugIn
         return tp;
         }
 
-
+    
+    /**
+     * Generates bins for fingerprinting (for mapping of -1/0/+1 ratio to values ranging from 0-255).
+     *
+     * @return the double[]
+     */
+    private double[] generateBins()
+        {
+        int size = 127; // the two center values 127,128 are 0, from there values ascend/descend in steps of 1/127 towards 1 and -1.
+        double[] matrix = new double[size+size+2]; // 256
+        double step = 1.0d/(double)size; // 1/127
+        
+        for (int i=0; i<size; i++)
+            {
+        	matrix[size-i-1]=-1.0d * (matrix[size+i+1]+step); // negative values
+        	matrix[size+i+2]=matrix[size+i+1]+step; // positive values
+            }
+        matrix[0]=-1;
+        matrix[matrix.length-1]=1;
+        
+        return matrix;        
+        }
+    
+    
     public boolean createFile() // do all calculations and create the output files
         {
         // Variables used by several jobs
@@ -142,6 +170,83 @@ public class Ratio_Analysis implements PlugIn
         String inputname = ""; // name of the input file
         ImagePlus img_out; // output image
         FileSaver outFile; // for saving Tiffs
+        
+        if (job==7) // fingerprinting
+        	{
+            // Load data
+            double[] data = loadFingerprintFile(inputFile);
+            if (data==null) return false;
+            double[] ranks = generateBins();
+            double ratio = 0; // the ratio
+            int[] print = new int[data.length/2]; // the ratio mapped to values ranging from 0-255
+            
+            ResultsTable rt = ResultsTable.getResultsTable(); // output
+            rt.setPrecision(9);
+            rt.reset();
+            
+            // Calculate ratio values from medians           
+            for (int i=0; i<data.length; i+=2)  
+                {
+                ratio = (data[i+1]-data[i])/(Math.abs(data[i+1])+Math.abs(data[i])); // (b-a) / (b+a)
+                for (int j=1; j<ranks.length; j++) // find the corresponding bin
+                	{
+                    if (ratio <= ranks[j]) // bin found
+                		{
+                		if (ratio<0) print[i/2] = j-1; // necessary because 127 and 128 = 0
+                		else print[i/2] = j;
+                		j=ranks.length; // end loop
+                		}
+                	}
+                rt.incrementCounter(); // write data to table
+                rt.addValue("neuropil", data[i]);    
+                rt.addValue("gfp", data[i+1]);
+                rt.addValue("ratio", ratio);    
+                rt.addValue("byte_ratio", print[i/2]+1);                    
+                }
+            
+            inputFile = inputFile.replace(".xls","");
+            try // save table
+                {
+                rt.saveAs(directory+inputFile+" Fingerprints.xls");    
+                }
+            catch (IOException e) 
+                {
+                IJ.error(saveError); 
+                return false;
+                } 
+
+            // generate image
+            int height = 50; // height/width of each element
+            String imp_out_title = inputFile+" Fingerprints";
+            ImagePlus imp_out = NewImage.createByteImage(imp_out_title, print.length*height, height, 1, 1);
+            WindowManager.checkForDuplicateName = true; // add a number to the title if name already exists  
+
+            ImageProcessor ip_out = imp_out.getProcessor();
+            int bins = print.length;
+            int picPos = 0; // counter within image
+            int values[] = new int[3]; // red, green, blue
+            
+            for(int i=0; i<bins; i++)
+                {
+                for(int j=0; j<height; j++)
+                    {
+                    for (int k=0; k<height; k++)
+                        {
+                        values[0] = print[i];
+                        values[1] = print[i];
+                        values[2] = print[i];
+                        ip_out.putPixel(picPos+k,j,values);
+                        }
+                    }
+                picPos = picPos + height; // move to next print
+                }
+
+            imp_out.show();
+            IJ.run("Ratio Spectrum"); 
+        	outFile = new FileSaver(imp_out);
+            outFile.saveAsTiff(directory+imp_out.getTitle()+".tif");
+            imp_out.close();
+        	}
 
         if (job==0 || all) // histograms
             {
@@ -2053,6 +2158,53 @@ public class Ratio_Analysis implements PlugIn
         } // end of loadStatFiles()
 
 
+    private double[] loadFingerprintFile(String inputname) // extract data from statistics files
+        { 
+        Vector<StringTokenizer> list = new Vector<StringTokenizer>(0, 16); // content of each file
+        int n = 0;
+        String part = "";
+        int c = 0; // counter for the position within data[]
+        StringTokenizer st;    
+        list = readFile(inputname); // read the file
+
+        if (list==null) return null;           
+        if (list.size()==0) return null; 
+        n = list.size()-1; // lines in the file
+        double[] data = new double[n];
+           
+        try
+            {
+            st = (StringTokenizer)list.elementAt(1); // test whether there is any data in the file
+            }
+        catch (ArrayIndexOutOfBoundsException e)
+            {
+            IJ.error("File \""+directory+inputname+"\" is too short.");
+            return null; 
+            }
+            
+        for (int i = 0; i < n; i++) // read all the lines
+            { 
+            st = (StringTokenizer)list.elementAt(i+1); 
+            part = st.nextToken(); // skip the index (line numbers)
+            part = st.nextToken(); // skip min
+            part = st.nextToken(); // skip q1
+            part = st.nextToken(); // get the median
+            try 
+                { 
+                data[c] = Double.valueOf(part).doubleValue(); 
+                } 
+            catch (NumberFormatException e) 
+                { 
+                IJ.error("Unknown file format: \""+directory+inputname+"\"");
+                return null; 
+                } 
+            c++; // necessary for the position within data[]
+            } // line finished 
+
+        return data; 
+        } // end of loadStatFiles()
+
+    
     private ArrayList<ArrayList<Double>> loadStatList(String addName) // read data for statTest() (comparative statistics). Based on loadStatFiles() but returns an ArrayList instead of an array. Reads only the median.
         { 
         Vector<StringTokenizer> list = new Vector<StringTokenizer>(0, 16); 
@@ -2292,7 +2444,7 @@ public class Ratio_Analysis implements PlugIn
         
     private boolean fileDialog() // ask the user what to do
         {
-        String[] purpose_temp = new String[7]; // which analyses to run
+        String[] purpose_temp = new String[8]; // which analyses to run
         purpose_temp[0] = "Histograms";
         purpose_temp[1] = "Statistics";
         purpose_temp[2] = "Scatter";
@@ -2300,6 +2452,7 @@ public class Ratio_Analysis implements PlugIn
         purpose_temp[4] = "Comparative statistics";
         purpose_temp[5] = "Normalized statistics (disabled)";
         purpose_temp[6] = "Only histogram overview";
+        purpose_temp[7] = "Fingerprinting (ignore all other options)";
 
         String[] terminalC = new String[4]; // terminal for GnuPlot
         terminalC[0] = "aqua";
@@ -2386,7 +2539,15 @@ public class Ratio_Analysis implements PlugIn
                 }     
             }
         
-        if(!manual)
+        if (job==7) // choose file
+        	{
+        	OpenDialog od;
+           	od = new OpenDialog("Please choose your input file:", null);
+        	directory = od.getDirectory();
+        	inputFile = od.getFileName();
+        	if (directory==null) return false;
+        	}
+        else if(!manual)
             {
             DirectoryChooser sd = new DirectoryChooser("Location of files:");
             directory = sd.getDirectory();
@@ -2451,7 +2612,7 @@ public class Ratio_Analysis implements PlugIn
             job = 0;
             overview = true;
             }
-
+        
         return true;
         } // end of fileDialog()
     } 
