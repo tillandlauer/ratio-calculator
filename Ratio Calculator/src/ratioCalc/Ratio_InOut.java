@@ -18,11 +18,9 @@ import java.util.Vector;
 public class Ratio_InOut
     {   
 //    private String saveError = "Couldn't save file.";
-    private boolean chName = false; // for normalized statistics: use refFiles as input files
     // All of the following options can be set in chooseImages():
     private int nFiles = 0; // number of files to be opened
     private String directory = ""; // directory for saving files manually
-    private String[] refFiles = new String[3]; // files for the normalized statistics (*currently disabled*)
 
     public Ratio_InOut(int files, String dir)
     	{
@@ -30,15 +28,7 @@ public class Ratio_InOut
     	directory = dir;
     	}
 
-    public Ratio_InOut(int files, String dir, boolean change, String[] references)
-		{
-		nFiles = files;
-    	directory = dir;
-		chName = change;
-		refFiles = references;
-		}    
-
-    protected int[][] loadHistoFilesInt(int ch) // read the data from histogram files
+    protected int[][] loadHistoFilesInt(int ch) // read the data from histogram files for intensity analysis
 	    { 
 	    Vector<StringTokenizer> list = new Vector<StringTokenizer>(0, 16); // content of each file 
 	    String inputname = "";
@@ -99,14 +89,14 @@ public class Ratio_InOut
 	    } // end of loadHistoFilesInt()
     
     
-    protected int[][] loadHistoFiles() // read the data from histogram files
+    protected int[][] loadHistoFiles(String histotype) // read the data from histogram files
         { 
         Vector<StringTokenizer> list = new Vector<StringTokenizer>(0, 16); // content of each file 
         String inputname = "";
         int n = 0;
         String part = "";
 
-        inputname = "01 Histogram.xls";
+        inputname = "01 "+histotype+".xls";
         list = readFile(inputname); // test whether files can be read           
         if (list==null) return null;
         if (list.size()==0) return null; 
@@ -115,8 +105,8 @@ public class Ratio_InOut
 
         for (int k=1;k<=nFiles;k++) // cycle through all files
             {
-            if (k<10) inputname = "0"+k+" Histogram.xls";
-            else inputname = k+" Histogram.xls";          
+            if (k<10) inputname = "0"+k+" "+histotype+".xls";
+            else inputname = k+" "+histotype+".xls";          
             list = readFile(inputname); // read data           
             if (list.size()==0) return null; 
             n = list.size()-1; 
@@ -137,28 +127,86 @@ public class Ratio_InOut
                 st = (StringTokenizer)list.elementAt(i+1); 
                 part = st.nextToken(); // skip the index (line numbers)
                 part = st.nextToken(); 
+                if (histotype == "Original Data") part = st.nextToken(); 
                 try 
                     { 
                     data[i][k-1] = Integer.valueOf(part).intValue(); // read data
                     } 
                 catch (NumberFormatException e) 
-	                { 
-	                try 
+                    { 
+                    try 
 	                    { 
 	                    data[i][k-1] = (int)Math.round(Double.valueOf(part).doubleValue()); // read data
 	                    } 
-	                catch (NumberFormatException e2) 
+                    catch (NumberFormatException e2) 
 	                    { 
 	                    IJ.error("Unknown file format: \""+directory+inputname+"\"");
 	                    return null; 
 	                    } 
-	                }
+                    }
                 } // bin read 
             } // all files read
 
         return data; 
         } // end of loadHistoFiles()
 
+    
+    protected double[][][] loadHistoFiles() // read the data from histogram files with SEM
+	    {
+	    Vector<StringTokenizer> list = new Vector<StringTokenizer>(0, 16); // content of each file 
+	    String inputname = "";
+	    int n = 0;
+	    String part = "";
+	
+	    inputname = "01 Histogram Summary.xls";
+	    list = readFile(inputname); // test whether files can be read           
+	    if (list==null) return null;
+	    if (list.size()==0) return null; 
+	    n = list.size()-1; // determine file size (number of bins)
+	    double[][][] data = new double[2][n][nFiles]; // final data (returned)
+	
+	    for (int k=1;k<=nFiles;k++) // cycle through all files
+	        {
+	        if (k<10) inputname = "0"+k+" Histogram Summary.xls";
+	        else inputname = k+" Histogram Summary.xls";          
+	        list = readFile(inputname); // read data           
+	        if (list.size()==0) return null; 
+	        n = list.size()-1; 
+	        StringTokenizer st;
+	
+	        try
+	            {
+	            st = (StringTokenizer)list.elementAt(1); // test whether there is any data in the file 
+	            }
+	        catch (ArrayIndexOutOfBoundsException e)
+	            {
+	            IJ.error("File \""+directory+inputname+"\" is too short.");
+	            return null; 
+	            }
+	            
+	        for (int i = 0; i < n; i++) // cycle through all bins
+	            { 
+	            st = (StringTokenizer)list.elementAt(i+1); 
+	            part = st.nextToken(); // skip the index (line numbers)
+	            for (int j=0;j<2;j++)
+		            {
+		            part = st.nextToken(); 
+		            try 
+		                { 
+		                data[j][i][k-1] = Double.valueOf(part).doubleValue(); // read data
+		                } 
+		            catch (NumberFormatException e) 
+		                { 
+		                IJ.error("Unknown file format: \""+directory+inputname+"\"");
+		                return null; 
+		                }
+		            }
+	            } // bin read 
+	        } // all files read
+	
+	    return data; 
+    } // end of loadHistoFiles() SEM
+    
 
     private Vector<StringTokenizer> readFile(String inputname) // loads a file for loadHistoFiles() and loadStatFiles()
         {    
@@ -252,78 +300,124 @@ public class Ratio_InOut
 
     protected double[][] loadStatFiles(int lines, int columns, boolean inverse, String addName, boolean extractMed) // extract data from statistics files
     // read LINES line per file, COLUMNS columns per file, INVERSE=false: output data = [data][files], ADDNAME: add a string to the input name, EXTRACTMED: get just the median and not all data (currently not used)
-        { 
-        Vector<StringTokenizer> list = new Vector<StringTokenizer>(0, 16); // content of each file
-        String inputname = "";
-        int n = 0;
-        int nd = columns;
-        String part = "";
-        double[][] data = new double[nFiles][nd*lines]; // final data (returned)     
-        if (!inverse) data = new double[nd*lines][nFiles];
-        int c = 0; // counter for the position within data[][]
-        StringTokenizer st;
-        
-        for (int k=1;k<=nFiles;k++) // cycle through files
-            {
-            if (chName) inputname = refFiles[0]; // only needed for normalized statistics. Used when reading data from the reference file
-            else if (k<10) inputname = "0"+k+" Statistics"+addName+".xls";
-            else inputname = k+" Statistics"+addName+".xls";          
-            list = readFile(inputname); // read the file
-            if (list==null) return null;           
-            if (list.size()==0) return null; 
-            n = list.size()-1; // lines in the file
-            if (extractMed && (k==1)) // read only the median or first file
-                {
-                lines = n;
-                data = new double[nFiles][nd*lines]; // re-initialize data[][]     
-                if (!inverse) data = new double[nd*lines][nFiles];
-                }
-    
-            try
-                {
-                st = (StringTokenizer)list.elementAt(1); // test whether there is any data in the file
-                nd = st.countTokens();                
-                }
-            catch (ArrayIndexOutOfBoundsException e)
-                {
-                IJ.error("File \""+directory+inputname+"\" is too short.");
-                return null; 
-                }
-                
-            for (int i = 0; i < lines; i++) // read all the lines
-                { 
-                st = (StringTokenizer)list.elementAt(i+1); 
-                part = st.nextToken(); // skip the index (line numbers)
-                if (extractMed) // skip MIN and Q1
-                    {
-                    part = st.nextToken(); 
-                    part = st.nextToken(); 
-                    nd = 2;
-                    }
-                for (int j = 0; j < nd-1; j++) // cycle through the columns
-                    { 
-                    part = st.nextToken(); // get the first column to read
-                    try 
-                        { 
-                        if (inverse) data[k-1][c] = Double.valueOf(part).doubleValue(); 
-                        else data[c][k-1] = Double.valueOf(part).doubleValue(); 
-                        } 
-                    catch (NumberFormatException e) 
-                        { 
-                        IJ.error("Unknown file format: \""+directory+inputname+"\"");
-                        return null; 
-                        } 
-                    c++; // necessary for the position within data[][]
-                    } // line finished 
-                } // file finished
-            c=0;
-            } // all data read
+	    { 
+	    Vector<StringTokenizer> list = new Vector<StringTokenizer>(0, 16); // content of each file
+	    String inputname = "";
+	    int n = 0;
+	    int nd = columns;
+	    String part = "";
+	    double[][] data = new double[nFiles][nd*lines]; // final data (returned)     
+	    if (!inverse) data = new double[nd*lines][nFiles];
+	    int c = 0; // counter for the position within data[][]
+	    StringTokenizer st;
+	    
+	    for (int k=1;k<=nFiles;k++) // cycle through files
+	        {
+	        if (k<10) inputname = "0"+k+" Statistics"+addName+".xls";
+	        else inputname = k+" Statistics"+addName+".xls";          
+	        list = readFile(inputname); // read the file
+	        if (list==null) return null;           
+	        if (list.size()==0) return null; 
+	        n = list.size()-1; // lines in the file
+	        if (extractMed && (k==1)) // read only the median or first file
+	            {
+	            lines = n;
+	            data = new double[nFiles][nd*lines]; // re-initialize data[][]     
+	            if (!inverse) data = new double[nd*lines][nFiles];
+	            }
+	
+	        try
+	            {
+	            st = (StringTokenizer)list.elementAt(1); // test whether there is any data in the file
+	            nd = st.countTokens();                
+	            }
+	        catch (ArrayIndexOutOfBoundsException e)
+	            {
+	            IJ.error("File \""+directory+inputname+"\" is too short.");
+	            return null; 
+	            }
+	            
+	        for (int i = 0; i < lines; i++) // read all the lines
+	            { 
+	            st = (StringTokenizer)list.elementAt(i+1); 
+	            part = st.nextToken(); // skip the index (line numbers)
+	            if (extractMed) // skip MIN and Q1
+	                {
+	                part = st.nextToken(); 
+	                part = st.nextToken(); 
+	                nd = 2;
+	                }
+	            for (int j = 0; j < nd-1; j++) // cycle through the columns
+	                { 
+	                part = st.nextToken(); // get the first column to read
+	                try 
+	                    { 
+	                    if (inverse) data[k-1][c] = Double.valueOf(part).doubleValue(); 
+	                    else data[c][k-1] = Double.valueOf(part).doubleValue(); 
+	                    } 
+	                catch (NumberFormatException e) 
+	                    { 
+	                    IJ.error("Unknown file format: \""+directory+inputname+"\"");
+	                    return null; 
+	                    } 
+	                c++; // necessary for the position within data[][]
+	                } // line finished 
+	            } // file finished
+	        c=0;
+	        } // all data read
 
-        return data; 
+    	return data; 
         } // end of loadStatFiles()
 
 
-    protected ArrayList<ArrayList<Double>> loadStatList(String addName) // read data for statTest() (comparative statistics). Based on loadStatFiles() but returns an ArrayList instead of an array. Reads only the median.
+    protected double[] loadFingerprintFile(String inputname) // extract data from statistics files
+	    { 
+	    Vector<StringTokenizer> list = new Vector<StringTokenizer>(0, 16); // content of each file
+	    int n = 0;
+	    String part = "";
+	    int c = 0; // counter for the position within data[]
+	    StringTokenizer st;    
+	    list = readFile(inputname); // read the file
+	
+	    if (list==null) return null;           
+	    if (list.size()==0) return null; 
+	    n = list.size()-1; // lines in the file
+	    double[] data = new double[n];
+	       
+	    try
+	        {
+	        st = (StringTokenizer)list.elementAt(1); // test whether there is any data in the file
+	        }
+	    catch (ArrayIndexOutOfBoundsException e)
+	        {
+	        IJ.error("File \""+directory+inputname+"\" is too short.");
+	        return null; 
+	        }
+	        
+	    for (int i = 0; i < n; i++) // read all the lines
+	        { 
+	        st = (StringTokenizer)list.elementAt(i+1); 
+	        part = st.nextToken(); // skip the index (line numbers)
+	        part = st.nextToken(); // skip min
+	        part = st.nextToken(); // skip q1
+	        part = st.nextToken(); // get the median
+	        try 
+	            { 
+	            data[c] = Double.valueOf(part).doubleValue(); 
+	            } 
+	        catch (NumberFormatException e) 
+	            { 
+	            IJ.error("Unknown file format: \""+directory+inputname+"\"");
+	            return null; 
+	            } 
+	        c++; // necessary for the position within data[]
+	        } // line finished 
+	
+	    return data; 
+	    } // end of loadFingerPrintFiles()
+    
+    
+    protected ArrayList<ArrayList<Double>> loadStatList(String addName, int loadValue) // read data for statTest() (comparative statistics). Based on loadStatFiles() but returns an ArrayList instead of an array. loadValue: 0=median, 1=Q1, 2=Q3.
         { 
         Vector<StringTokenizer> list = new Vector<StringTokenizer>(0, 16); 
         String inputname = "";
@@ -361,7 +455,8 @@ public class Ratio_InOut
                 st = (StringTokenizer)list.elementAt(i+1); 
                 part = st.nextToken(); // read only the median; skip index, MIN and Q1
                 part = st.nextToken(); 
-                part = st.nextToken(); 
+                if (loadValue==0 || loadValue==2) part = st.nextToken(); // Med or Q3 
+                if (loadValue==2) part = st.nextToken(); // Q3 
                 nd = 2;
                 for (int j = 0; j < nd-1; j++) // cycle through columns
                     { 

@@ -380,7 +380,7 @@ public class Ratio_Calculator implements PlugIn
 
                 if (histo || statistics)
                     {
-                    ratio = ((int)ranks[Math.round(value[0])][Math.round(value[1])][1])-1; // '-1' because the index of arrays starts at '0'.
+                    ratio = ((int)ranks[Math.round(value[0])][Math.round(value[1])][1])-1; // '-1' because the value is from now on used as an index for arrays. arrays start at 0, thus x[n-1] to address the value at position n.
                     counts = (int)ranks[Math.round(value[0])][Math.round(value[1])][2]; // needed for normalization and statistics
 
                     if (!stripStats) // no stripStats = include 255
@@ -538,9 +538,11 @@ public class Ratio_Calculator implements PlugIn
                 }
             }
 
+        if (statistics || histo) IJ.log("Number of pixels in mask: "+maskCounter);
+        
         if ((stripStats && statistics) || (stripStats && histo))
             {
-            if ((satCounter==0) && (maskCounter==0)) IJ.log("No saturated pixels.");
+            if ((satCounter==0) && (maskCounter==0)) IJ.log("No saturated pixels."); // if no mask was used.
             else IJ.log("Saturated pixels: "+IJ.d2s(satCounter,0)+" ("+IJ.d2s(100.0d*satCounter/maskCounter,2)+"% of the mask)");
             logWindow = true;
             }
@@ -608,7 +610,7 @@ public class Ratio_Calculator implements PlugIn
         ratioList = new ArrayList<Double>(1);
 
         // calculate the statistics
-        double median = getMedian(results);
+        double median = getMedian(results); // sorting not necessary because this list already is sorted.
         double[][] halfs = getHalf(results);
         double q1 = getMedian(halfs[0]);
         double q2 = getMedian(halfs[1]);
@@ -794,12 +796,12 @@ public class Ratio_Calculator implements PlugIn
 
 
     /**
-     * Calc histo.
+     * Calculate histograms.
      *
-     * @param histoData the histo data
-     * @param xSize the x size
-     * @param ySize the y size
-     * @param bins the bins
+     * @param histoData the actual input data
+     * @param xSize the width of the histogram
+     * @param ySize the height of the histogram
+     * @param bins the number of bins
      * @return the image plus
      */
     public HistoWrapper calcHisto(double[] histoData, int xSize, int ySize, int bins, boolean lowHisto) // Generate histogram plot & table from a ratio matrix.
@@ -1056,7 +1058,6 @@ public class Ratio_Calculator implements PlugIn
         double[][] ratioData = new double[1][1];
         int histoX = 1024;
         int histoY = 512;
-        int histoBins = 512;
         int ratio = 0;
         int counts = 0;
         ResultsTable rt = ResultsTable.getResultsTable();        
@@ -1115,6 +1116,36 @@ public class Ratio_Calculator implements PlugIn
         // Note: The lower and upper quartiles fall on the boundaries between '0.498039216' and '0.5' and between '2' and '2.007874016', respectively. 
         // During the calculation of medians, each time the lower value is chosen.
         // Because 0/0 is treated as a ratio of 1, this distribution is skewed by one value towards the middle.
+ 
+        if (showUnbinned && (histo || statistics)) // show original data
+	        {
+	        rt = ResultsTable.getResultsTable();        
+	        rt.reset();
+	        rt.setPrecision(9);
+	        if (standHisto)
+	            {
+	            for (int i=0; i<histoDataS.length; i++)
+	                {
+	                rt.incrementCounter();
+	                if (statistics) rt.addValue("ratio",ratioData[i][1]);
+	                rt.addValue("frequency",histoDataS[i]);
+	                }
+	            rt.show("Results");
+	            IJ.renameResults("Results", prefix+"Original Data"); 
+	            }
+	        if (normHisto)
+	            {
+	            rt.reset();
+	            for (int i=0; i<histoDataN.length; i++)
+	                {
+	                rt.incrementCounter();
+	                if (statistics) rt.addValue("ratio",ratioData[i][1]);
+	                rt.addValue("frequency",histoDataN[i]);
+	                }
+	            rt.show("Results");
+	            IJ.renameResults("Results", prefix+"Original Data (normalized)");                      
+	           }
+	        }
         
         if (statistics)
             {
