@@ -73,6 +73,7 @@ public class Mask_Generator_Triple implements PlugIn
     
     public void run(String arg) 
         {        
+    	loadConfig();
         // Create and show user dialog to select images and set options
         ImagePlus[] img = chooseImages();
         if (img == null) return;
@@ -361,6 +362,69 @@ public class Mask_Generator_Triple implements PlugIn
         IJ.showStatus("The calculation took "+IJ.d2s((System.currentTimeMillis()-start_time)/1000.0d, 2)+" seconds."); // display the amount of time used.
         }
 
+    
+    private boolean loadConfig()
+		{
+		Ratio_Config rc;
+		rc = new Ratio_Config();
+		if (rc.error) return false;
+		else
+			{
+			String[] ints = {"nBins", "cutOff"};
+			String[] doubles = {"defaultThreshold", "factor"};
+			String[] booleans = {"merge", "thresh", "tSlice", "iThresh", "showRes", "manual", "ratio", "mask", "keepAM", "perc"};
+			int cInt = 0;
+			double cDouble = 0.0d;
+			boolean cBool = false;
+			
+	    	cInt = rc.getInt(ints[0]);
+	    	if (!rc.error) nBins=cInt;
+	    	else rc.error=false;
+	    	cInt = rc.getInt(ints[1]);
+	    	if (!rc.error) cutOff=cInt;
+	    	else rc.error=false;
+
+	    	cDouble = rc.getInt(doubles[0]);
+	    	if (!rc.error) defaultThreshold=cDouble;
+	    	else rc.error=false;
+	    	cDouble = rc.getInt(doubles[1]);
+	    	if (!rc.error) factor=cDouble;
+	    	else rc.error=false;
+	    	
+	    	cBool = rc.getBoolean(booleans[0]);
+	    	if (!rc.error) merge=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[1]);
+	    	if (!rc.error) thresh=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[2]);
+	    	if (!rc.error) tSlice=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[3]);
+	    	if (!rc.error) iThresh=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[4]);
+	    	if (!rc.error) showRes=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[5]);
+	    	if (!rc.error) manual=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[6]);
+	    	if (!rc.error) ratio=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[7]);
+	    	if (!rc.error) mask=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[8]);
+	    	if (!rc.error) keepAM=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[9]);
+	    	if (!rc.error) perc=cBool;
+	    	else rc.error=false;
+			}
+		return true;
+		}
+    
 
      public ImagePlus execThresh(ImagePlus imp, boolean calc, boolean apply) // Adapted from Gabriel Landini's AutoThresholder class
         {
@@ -678,6 +742,7 @@ public class Mask_Generator_Triple implements PlugIn
 
         if (open_images.length<3)
 	        {
+            IJ.error(title, "At least three images need to be open.");
         	return null;
 	        }
         

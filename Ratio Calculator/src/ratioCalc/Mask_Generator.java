@@ -70,12 +70,13 @@ public class Mask_Generator implements PlugIn
     private boolean keepAM = false; // keep (Amira) segmentation mask file. "false" can lead to crashes 
     private boolean perc = false; // percentile thresholding (otherwise isodata); set by choice:Method
     private boolean logInfo = true; // Show parameters in the log window
-    private double factor = 0; // thresholding factor (see default threshold)
+    private double factor = 0.0d; // thresholding factor (see default threshold)
     private int nBins = 0; // number of substacks
     private int cutOff = 0; // min. number of slices per substack
     
     public void run(String arg) 
         {        
+    	loadConfig();
         // Create and show user dialog to select images and set options
         ImagePlus[] img = chooseImages();
         if (img == null) return;
@@ -369,6 +370,75 @@ public class Mask_Generator implements PlugIn
         }
 
 
+    private boolean loadConfig()
+		{
+		Ratio_Config rc;
+		rc = new Ratio_Config();
+		if (rc.error) return false;
+		else
+			{
+			String[] ints = {"nBins", "cutOff"};
+			String[] doubles = {"defaultThreshold", "factor"};
+			String[] booleans = {"rgb", "dupl", "merge", "thresh", "tSlice", "iThresh", "showRes", "manual", "ratio", "mask", "keepAM", "perc"};
+			int cInt = 0;
+			double cDouble = 0.0d;
+			boolean cBool = false;
+			
+	    	cInt = rc.getInt(ints[0]);
+	    	if (!rc.error) nBins=cInt;
+	    	else rc.error=false;
+	    	cInt = rc.getInt(ints[1]);
+	    	if (!rc.error) cutOff=cInt;
+	    	else rc.error=false;
+
+	    	cDouble = rc.getInt(doubles[0]);
+	    	if (!rc.error) defaultThreshold=cDouble;
+	    	else rc.error=false;
+	    	cDouble = rc.getInt(doubles[1]);
+	    	if (!rc.error) factor=cDouble;
+	    	else rc.error=false;
+	    	
+	    	cBool = rc.getBoolean(booleans[0]);
+	    	if (!rc.error) rgb=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[1]);
+	    	if (!rc.error) dupl=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[2]);
+	    	if (!rc.error) merge=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[3]);
+	    	if (!rc.error) thresh=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[4]);
+	    	if (!rc.error) tSlice=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[5]);
+	    	if (!rc.error) iThresh=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[6]);
+	    	if (!rc.error) showRes=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[7]);
+	    	if (!rc.error) manual=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[8]);
+	    	if (!rc.error) ratio=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[9]);
+	    	if (!rc.error) mask=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[10]);
+	    	if (!rc.error) keepAM=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[11]);
+	    	if (!rc.error) perc=cBool;
+	    	else rc.error=false;
+			}
+		return true;
+		}
+    
+    
      public ImagePlus execThresh(ImagePlus imp, boolean calc, boolean apply) // Adapted from Gabriel Landini's AutoThresholder class
         {
         ImageProcessor ip = imp.getProcessor();

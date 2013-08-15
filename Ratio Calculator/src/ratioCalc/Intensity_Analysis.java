@@ -78,13 +78,80 @@ public class Intensity_Analysis implements PlugIn
 
     public void run(String arg) 
         {   
-        boolean success = fileDialog();
+    	boolean success = loadConfig();
+        success = fileDialog();
         if (!success) return;
 
         success = doTheAnalysis();
         }
 
-
+    
+    private boolean loadConfig()
+		{
+		Ratio_Config rc;
+		rc = new Ratio_Config();
+		if (rc.error) return false;
+		else
+			{
+			String[] ints = {"intJob", "nFiles", "nChannels"};
+			String[] strings = {"intPlottitle", "intAxislabel", "terminal", "directory"};
+			String[] booleans = {"sd", "statsMean", "histoMean", "statsSEMed", "ratios", "screen", "svg", "png"};
+			int cInt = 0;
+			String cString = "";
+			boolean cBool = false;
+			
+	    	cInt = rc.getInt(ints[0]);
+	    	if (!rc.error) job=cInt;
+	    	else rc.error=false;
+	    	cInt = rc.getInt(ints[1]);
+	    	if (!rc.error) nFiles=cInt;
+	    	else rc.error=false;
+	    	cInt = rc.getInt(ints[2]);
+	    	if (!rc.error) nChannels=cInt;
+	    	else rc.error=false;
+	
+	    	cString = rc.getValue(strings[0]);
+	    	if (!rc.error) plottitle=cString;
+	    	else rc.error=false;
+	    	cString = rc.getValue(strings[1]);
+	    	if (!rc.error) axislabel=cString;
+	    	else rc.error=false;
+	    	cString = rc.getValue(strings[2]);
+	    	if (!rc.error) terminal=cString;
+	    	else rc.error=false;
+	    	cString = rc.getValue(strings[3]);
+	    	if (!rc.error) directory=cString;
+	    	else rc.error=false;
+			
+	    	cBool = rc.getBoolean(booleans[0]);
+	    	if (!rc.error) sd=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[1]);
+	    	if (!rc.error) statsMean=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[2]);
+	    	if (!rc.error) histoMean=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[3]);
+	    	if (!rc.error) statsSEMed=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[4]);
+	    	if (!rc.error) ratios=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[5]);
+	    	if (!rc.error) screen=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[6]);
+	    	if (!rc.error) svg=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[7]);
+	    	if (!rc.error) png=cBool;
+	    	else rc.error=false;
+			}
+		return true;
+		}
+    
+    
     public boolean doTheAnalysis() // do all calculations and create the output files
         {
         // Variables used by several jobs

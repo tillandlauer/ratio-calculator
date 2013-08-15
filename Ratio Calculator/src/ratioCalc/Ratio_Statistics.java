@@ -176,13 +176,18 @@ public class Ratio_Statistics
 
     // do the tests
     int t1 = 1, t2 = 1; // counter (test file 1 and test file 2)
-    int fileCounter = 0, nTests = 0; // counter
+    int fileCounter = 0; // counter
     String filename = "00 Statistics Summary "+addToFilename+"T-Test.txt"; // output file
     TextPanel tp = new TextPanel(); // content of output file
     double pValue, uStat;
 
     // Bonferroni correction
     double alpha = 0.05d;
+    int nTests = files-1;
+    for (int i=nTests-1; i>0; i--)
+    	{
+    	nTests+=i;
+    	}
     double bon = alpha/nTests;
     
     // t-test
@@ -191,7 +196,6 @@ public class Ratio_Statistics
     fileCounter++;
     for (int j=0; j<(files-fileCounter); j++)
         {
-        nTests++; // counts all tests
         t2++;
         tp.append("T-test of "+xTitle[t1-1]+" ("+IJ.d2s(t1,0)+") vs "+xTitle[t2-1]+" ("+IJ.d2s(t2,0)+"):");
         pValue = TestUtils.tTest((double[])data.get(t1-1),(double[])data.get(t2-1)); // T-test of two files
@@ -199,7 +203,7 @@ public class Ratio_Statistics
         uStat = TestUtils.t((double[])data.get(t1-1),(double[])data.get(t2-1)); // T-test of two files
         tp.append("T statistic: "+IJ.d2s(uStat,0));
         if (TestUtils.tTest((double[])data.get(t1-1),(double[])data.get(t2-1), bon)) tp.append("Significant.");
-        else tp.append("Not significant.");
+        else tp.append("Not significant in case of "+nTests+" tests.");
         tp.append("");
         }
     t1++;
@@ -235,13 +239,18 @@ public class Ratio_Statistics
 	    // do the tests
 	    MannWhitneyUTest mwtA;       
 	    int t1 = 1, t2 = 1; // counter (test file 1 and test file 2)
-	    int fileCounter = 0, nTests = 0; // counter
+	    int fileCounter = 0; // counter
 	    String filename = "00 Statistics Summary "+addToFilename+"MWU.txt"; // output file
 	    TextPanel tp = new TextPanel(); // content of output file
 	    double pValue, uStat;
 
 	    // Bonferroni correction
 	    double alpha = 0.05d;
+	    int nTests = files-1;
+	    for (int i=nTests-1; i>0; i--)
+	    	{
+	    	nTests+=i;
+	    	}
 	    double bon = alpha/nTests;
 	    
 	    // MWU
@@ -250,7 +259,6 @@ public class Ratio_Statistics
 	    fileCounter++;
 	    for (int j=0; j<(files-fileCounter); j++)
 	        {
-	        nTests++; // counts all tests
 	        t2++;
 	        tp.append("Mann-Whitney U-test of "+xTitle[t1-1]+" ("+IJ.d2s(t1,0)+") vs "+xTitle[t2-1]+" ("+IJ.d2s(t2,0)+"):");
 	        mwtA = new MannWhitneyUTest();
@@ -259,7 +267,7 @@ public class Ratio_Statistics
 	        uStat = mwtA.mannWhitneyU((double[])data.get(t1-1),(double[])data.get(t2-1)); // MWU test of two files
 	        tp.append("U statistic: "+IJ.d2s(uStat,0));
 	        if (pValue<bon) tp.append("Significant.");
-	        else tp.append("Not significant.");
+	        else tp.append("Not significant in case of "+nTests+" tests.");
 	        tp.append("");
 	        }
 	    t1++;

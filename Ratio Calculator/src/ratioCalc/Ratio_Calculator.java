@@ -138,7 +138,7 @@ public class Ratio_Calculator implements PlugIn
     private int defaultScale = 10000000; // Default scaling factor for histograms (options 1/4)   
     /** Height of histogram plots; set in <code>chooseImages</code> 
     * <br>(for <code>scaleOption 3</code>; max displayed frequency, not height in pixels)
-    * <br>default: <code>130000</code>
+    * <br>default: <code>300000</code>
     * @see scaleOption 
     * @see defaultScale 
     * @see normValue 
@@ -175,7 +175,9 @@ public class Ratio_Calculator implements PlugIn
         String parameters = Macro.getOptions();
         if (parameters!=null) prefix = parameters;
     
-        ImagePlus[] img = chooseImages(); // choose images and set variables.
+    	loadConfig();
+
+    	ImagePlus[] img = chooseImages(); // choose images and set variables.
         if (img == null) return;
         
         if (logInfo) showInfo(img); // Show the parameters
@@ -271,6 +273,110 @@ public class Ratio_Calculator implements PlugIn
         IJ.freeMemory();
         }
 
+    
+    private boolean loadConfig()
+		{
+		Ratio_Config rc;
+		rc = new Ratio_Config();
+		if (rc.error) return false;
+		else
+			{
+			String[] ints = {"bitdepth", "histoBins", "defaultScale", "drawMax", "scaleOption"};
+			String[] doubles = {"normValue", "scatterMulti"};
+			String[] strings = {"prefix"};
+			String[] booleans = {"keepFiles", "saveFiles", "image", "displayLUT", "scatter", "histo", "statistics", "stripStats", "mask", "standHisto", "normHisto", "showUnbinned", "maxScatter", "scatterScale", "showRanks", "useUniRatio", "extraRatio", "logInfo"};
+
+			int cInt = 0;
+			double cDouble = 0.0d;
+			String cString = "";
+			boolean cBool = false;
+			
+	    	cInt = rc.getInt(ints[0]);
+	    	if (!rc.error) bitdepth=cInt;
+	    	else rc.error=false;
+	    	cInt = rc.getInt(ints[1]);
+	    	if (!rc.error) histoBins=cInt;
+	    	else rc.error=false;
+	    	cInt = rc.getInt(ints[2]);
+	    	if (!rc.error) defaultScale=cInt;
+	    	else rc.error=false;
+	    	cInt = rc.getInt(ints[3]);
+	    	if (!rc.error) drawMax=cInt;
+	    	else rc.error=false;
+	    	cInt = rc.getInt(ints[4]);
+	    	if (!rc.error) scaleOption=cInt;
+	    	else rc.error=false;
+
+	    	cDouble = rc.getDouble(doubles[0]);
+	    	if (!rc.error) normValue=cDouble;
+	    	else rc.error=false;
+	    	cDouble = rc.getDouble(doubles[1]);
+	    	if (!rc.error) scatterMulti=cDouble;
+	    	else rc.error=false;
+	    	
+	    	cString = rc.getValue(strings[0]);
+	    	if (!rc.error) prefix=cString;
+	    	else rc.error=false;
+			
+	    	cBool = rc.getBoolean(booleans[0]);
+	    	if (!rc.error) keepFiles=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[1]);
+	    	if (!rc.error) saveFiles=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[2]);
+	    	if (!rc.error) image=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[3]);
+	    	if (!rc.error) displayLUT=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[4]);
+	    	if (!rc.error) scatter=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[5]);
+	    	if (!rc.error) histo=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[6]);
+	    	if (!rc.error) statistics=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[7]);
+	    	if (!rc.error) stripStats=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[8]);
+	    	if (!rc.error) mask=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[9]);
+	    	if (!rc.error) standHisto=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[10]);
+	    	if (!rc.error) normHisto=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[11]);
+	    	if (!rc.error) showUnbinned=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[12]);
+	    	if (!rc.error) maxScatter=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[13]);
+	    	if (!rc.error) scatterScale=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[14]);
+	    	if (!rc.error) showRanks=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[15]);
+	    	if (!rc.error) useUniRatio=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[16]);
+	    	if (!rc.error) extraRatio=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[17]);
+	    	if (!rc.error) logInfo=cBool;
+	    	else rc.error=false;
+			}
+		return true;
+		}
+    
+    
     /**
      * Calculate the ratios
      * @param imp_in <code>ImagePlus[]</code> containing two (input) images

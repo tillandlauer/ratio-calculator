@@ -2,6 +2,7 @@ package ratioCalc;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
+import ij.Prefs;
 import ij.WindowManager;
 import ij.gui.GenericDialog;
 import ij.gui.NewImage;
@@ -83,7 +84,7 @@ public class Ratio_Analysis implements PlugIn
     private boolean all = false; // job=3
     private boolean overview = false; // job=6
     // All of the following options can be set in chooseImages():
-    private int job = 8; // type of analysis to run; 0 = Histograms, 1 = Statistics, 2 = Scatter plots, 3 = All basic plots, 4 = comparative statistics, 5 = normalized statistics (*currently disabled*), 6 = histograms overview, 7 = fingerprint, 8 = proportions
+    private int job = 8; // type of analysis to run; 0 = Histograms, 1 = Statistics, 2 = Scatter plots, 3 = All basic plots, 4 = comparative statistics, 5 = normalized statistics, 6 = histograms overview, 7 = fingerprint, 8 = proportions
     private int nFiles = 8; // number of files to be opened
     private boolean sd = true; // calculate/show standard errors
     private boolean statsMean = true; // use mean instead of median for statistics
@@ -91,18 +92,20 @@ public class Ratio_Analysis implements PlugIn
     private boolean histo_med = false; // use median for histograms
     private String plottitle = "Ratios";
     private String axislabel = "ratios";
-    private String directory = "/Users/till/"; // directory for saving files manually
+    private String directory = ij.Prefs.getHomeDir()+Prefs.getFileSeparator(); // directory for saving files manually
     private String inputFile = "00 Statistics Summary 1-1.xls"; // file to load for fingerprinting
     private boolean screen = true; // show results on screen
     private String terminal = "aqua"; // output of data (aqua/x11/windows/wxt)
     private boolean svg = true; // create .svg file
     private boolean png = true; // create .png file
+
     private String[] xTitle = new String[nFiles]; // x-labels for the different files (statistics)
     private String[] refFiles; // files for the normalized statistics
 
     public void run(String arg) 
-        {   
-        boolean success = fileDialog();
+        {  
+    	boolean success = loadConfig();
+        success = fileDialog();
         if (!success) return;
 
         if (all || job==0 || job==1 || job==2) success = basicAnalysis();
@@ -113,7 +116,67 @@ public class Ratio_Analysis implements PlugIn
         else if (job==9) success = subtractHistos();
         }
 
+    
+    private boolean loadConfig()
+    	{
+    	Ratio_Config rc;
+		rc = new Ratio_Config();
+		if (rc.error) return false;
+		else
+			{
+			String[] ints = {"job", "nFiles"};
+			String[] strings = {"plottitle", "axislabel", "terminal", "directory"};
+			String[] booleans = {"sd", "statsMean", "stats_mad", "histo_med", "screen", "svg", "png"};
+			int cInt = 0;
+			String cString = "";
+			boolean cBool = false;
+			
+	    	cInt = rc.getInt(ints[0]);
+	    	if (!rc.error) job=cInt;
+	    	else rc.error=false;
+	    	cInt = rc.getInt(ints[1]);
+	    	if (!rc.error) nFiles=cInt;
+	    	else rc.error=false;
 
+	    	cString = rc.getValue(strings[0]);
+	    	if (!rc.error) plottitle=cString;
+	    	else rc.error=false;
+	    	cString = rc.getValue(strings[1]);
+	    	if (!rc.error) axislabel=cString;
+	    	else rc.error=false;
+	    	cString = rc.getValue(strings[2]);
+	    	if (!rc.error) terminal=cString;
+	    	else rc.error=false;
+	    	cString = rc.getValue(strings[3]);
+	    	if (!rc.error) directory=cString;
+	    	else rc.error=false;
+			
+	    	cBool = rc.getBoolean(booleans[0]);
+	    	if (!rc.error) sd=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[1]);
+	    	if (!rc.error) statsMean=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[2]);
+	    	if (!rc.error) stats_mad=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[3]);
+	    	if (!rc.error) histo_med=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[4]);
+	    	if (!rc.error) screen=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[5]);
+	    	if (!rc.error) svg=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[6]);
+	    	if (!rc.error) png=cBool;
+	    	else rc.error=false;
+			}
+		return true;
+    	}
+    
+    
     public boolean propAnalysis() // calculate proportions
 	    {
 	    Ratio_InOut rio = new Ratio_InOut(nFiles, directory);

@@ -110,7 +110,9 @@ public class Intensity_Calculator implements PlugIn
         {  
         String parameters = Macro.getOptions();
         if (parameters!=null) prefix = parameters;
-    
+ 
+    	loadConfig();
+        
         ImagePlus[] img = chooseImages(); // choose images and set variables.
         if (img == null) return;
         
@@ -136,6 +138,68 @@ public class Intensity_Calculator implements PlugIn
         IJ.freeMemory();
         }
 
+    
+    private boolean loadConfig()
+		{
+		Ratio_Config rc;
+		rc = new Ratio_Config();
+		if (rc.error) return false;
+		else
+			{
+			String[] ints = {"histoBins", "defaultScale", "drawMax", "scaleOption"};
+			String[] strings = {"prefix"};
+			String[] booleans = {"keepFiles", "saveFiles", "histo", "statistics", "stripStats", "mask", "showUnbinned", "logInfo"};
+
+			int cInt = 0;
+			String cString = "";
+			boolean cBool = false;
+			
+	    	cInt = rc.getInt(ints[0]);
+	    	if (!rc.error) histoBins=cInt;
+	    	else rc.error=false;
+	    	cInt = rc.getInt(ints[1]);
+	    	if (!rc.error) defaultScale=cInt;
+	    	else rc.error=false;
+	    	cInt = rc.getInt(ints[2]);
+	    	if (!rc.error) drawMax=cInt;
+	    	else rc.error=false;
+	    	cInt = rc.getInt(ints[3]);
+	    	if (!rc.error) scaleOption=cInt;
+	    	else rc.error=false;
+
+	    	cString = rc.getValue(strings[0]);
+	    	if (!rc.error) prefix=cString;
+	    	else rc.error=false;
+			
+	    	cBool = rc.getBoolean(booleans[0]);
+	    	if (!rc.error) keepFiles=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[1]);
+	    	if (!rc.error) saveFiles=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[2]);
+	    	if (!rc.error) histo=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[3]);
+	    	if (!rc.error) statistics=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[4]);
+	    	if (!rc.error) stripStats=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[5]);
+	    	if (!rc.error) mask=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[6]);
+	    	if (!rc.error) showUnbinned=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[7]);
+	    	if (!rc.error) logInfo=cBool;
+	    	else rc.error=false;
+			}
+		return true;
+		}
+    
+    
     /**
      * Calculate the average intensities
      * @param imp_in <code>ImagePlus[]</code> containing two (input) images

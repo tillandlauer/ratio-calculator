@@ -12,6 +12,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
@@ -21,6 +22,7 @@ public class Ratio_InOut
     // All of the following options can be set in chooseImages():
     private int nFiles = 0; // number of files to be opened
     private String directory = ""; // directory for saving files manually
+    private static boolean config = false;
 
     public Ratio_InOut(int files, String dir)
     	{
@@ -36,7 +38,7 @@ public class Ratio_InOut
 	    String part = "";
 	
 	    inputname = "01 Histogram "+ch+".xls";
-	    list = readFile(inputname); // test whether files can be read           
+	    list = readFile(directory+inputname); // test whether files can be read           
 	    if (list==null) return null;
 	    if (list.size()==0) return null; 
 	    n = list.size()-1; // determine file size (number of bins)
@@ -46,7 +48,7 @@ public class Ratio_InOut
 	        {
 	        if (k<10) inputname = "0"+k+" Histogram "+ch+".xls";
 	        else inputname = k+" Histogram "+ch+".xls";          
-	        list = readFile(inputname); // read data           
+	        list = readFile(directory+inputname); // read data           
 	        if (list.size()==0) return null; 
 	        n = list.size()-1; 
 	        StringTokenizer st;
@@ -97,7 +99,7 @@ public class Ratio_InOut
         String part = "";
 
         inputname = "01 "+histotype+".xls";
-        list = readFile(inputname); // test whether files can be read           
+        list = readFile(directory+inputname); // test whether files can be read           
         if (list==null) return null;
         if (list.size()==0) return null; 
         n = list.size()-1; // determine file size (number of bins)
@@ -107,7 +109,7 @@ public class Ratio_InOut
             {
             if (k<10) inputname = "0"+k+" "+histotype+".xls";
             else inputname = k+" "+histotype+".xls";          
-            list = readFile(inputname); // read data           
+            list = readFile(directory+inputname); // read data           
             if (list.size()==0) return null; 
             n = list.size()-1; 
             StringTokenizer st;
@@ -159,7 +161,7 @@ public class Ratio_InOut
 	    String part = "";
 	
 	    inputname = "01 Histogram Summary.xls";
-	    list = readFile(inputname); // test whether files can be read           
+	    list = readFile(directory+inputname); // test whether files can be read           
 	    if (list==null) return null;
 	    if (list.size()==0) return null; 
 	    n = list.size()-1; // determine file size (number of bins)
@@ -169,7 +171,7 @@ public class Ratio_InOut
 	        {
 	        if (k<10) inputname = "0"+k+" Histogram Summary.xls";
 	        else inputname = k+" Histogram Summary.xls";          
-	        list = readFile(inputname); // read data           
+	        list = readFile(directory+inputname); // read data           
 	        if (list.size()==0) return null; 
 	        n = list.size()-1; 
 	        StringTokenizer st;
@@ -208,14 +210,56 @@ public class Ratio_InOut
     } // end of loadHistoFiles() SEM
     
 
-    private Vector<StringTokenizer> readFile(String inputname) // loads a file for loadHistoFiles() and loadStatFiles()
+    protected static HashMap<String, String> loadConfigFile(String file) // read the data from config files
+	    {
+	    Vector<StringTokenizer> list = new Vector<StringTokenizer>(0, 16); // content of each file 
+	    int n = 0;
+	    
+	    config = true;
+	    list = readFile(file); // test whether files can be read      
+	    config = false;
+	    if (list==null) return null;
+	    if (list.size()==0) return null; 
+	    n = list.size()-1; // determine file size
+	    
+	    HashMap<String, String> finalData = new HashMap<String, String>(list.size());
+	    
+	    String[] data = new String[2]; // final data (returned)
+        StringTokenizer st;
+        try
+        	{
+        	st = (StringTokenizer)list.elementAt(1); // test whether there is any data in the file 
+        	}
+        catch (ArrayIndexOutOfBoundsException e)
+        	{
+        	IJ.error("Configuration file "+file+" can not be read.");
+        	return null; 
+        	}
+	
+        for (int i = 0; i < n; i++) // cycle through all lines
+            { 
+            st = (StringTokenizer)list.elementAt(i+1); 
+            data = new String[2];
+            for (int j=0;j<2;j++)
+	            {
+            	data[j] = st.nextToken();
+            	if ((j==0) && (st.countTokens()>3)) st.nextToken(); // skip the = character
+	            }
+            finalData.put(data[0], data[1]);
+            }
+	
+	    return finalData; 
+	    } // end of loadConfigFile()
+    
+    
+    private static Vector<StringTokenizer> readFile(String inputname) // loads a file for loadHistoFiles() and loadStatFiles()
         {    
         Vector<StringTokenizer> list = new Vector<StringTokenizer>(0, 16); 
         String line = ""; 
 
         try 
             { 
-            FileReader fr = new FileReader(directory+inputname); 
+            FileReader fr = new FileReader(inputname); 
             BufferedReader br = new BufferedReader(fr); 
 
             do 
@@ -233,12 +277,12 @@ public class Ratio_InOut
             } 
         catch (FileNotFoundException e) 
             {
-            IJ.error("File \""+directory+inputname+"\" not found."); 
+        	if (!config) IJ.error("File \""+inputname+"\" not found."); 
             return null; 
             }
         catch (IOException e) 
             {
-            IJ.error("Couldn't read from file \""+directory+inputname+"\"."); 
+            IJ.error("Couldn't read from file \""+inputname+"\"."); 
             return null; 
             } 
         return list;
@@ -260,7 +304,7 @@ public class Ratio_InOut
             {
             if (k<10) inputname = "0"+k+" Statistics.xls";
             else inputname = k+" Statistics.xls";          
-            list = readFile(inputname); // read the file
+            list = readFile(directory+inputname); // read the file
             if (list==null) return null;           
             if (list.size()==0) return null; 
     
@@ -315,7 +359,7 @@ public class Ratio_InOut
 	        {
 	        if (k<10) inputname = "0"+k+" Statistics"+addName+".xls";
 	        else inputname = k+" Statistics"+addName+".xls";          
-	        list = readFile(inputname); // read the file
+	        list = readFile(directory+inputname); // read the file
 	        if (list==null) return null;           
 	        if (list.size()==0) return null; 
 	        n = list.size()-1; // lines in the file
@@ -377,7 +421,7 @@ public class Ratio_InOut
 	    String part = "";
 	    int c = 0; // counter for the position within data[]
 	    StringTokenizer st;    
-	    list = readFile(inputname); // read the file
+	    list = readFile(directory+inputname); // read the file
 	
 	    if (list==null) return null;           
 	    if (list.size()==0) return null; 
@@ -432,7 +476,7 @@ public class Ratio_InOut
             {
             if (k<10) inputname = "0"+k+" Statistics"+addName+".xls";
             else inputname = k+" Statistics"+addName+".xls";          
-            list = readFile(inputname);            
+            list = readFile(directory+inputname);            
             if (list==null) return null;           
             if (list.size()==0) return null; 
             n = list.size()-1; 

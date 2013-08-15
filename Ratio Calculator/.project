@@ -24,4 +24,21 @@
 	<natures>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>Ratio Calculator Macro 2.txt</name>
+			<type>1</type>
+			<location>/Users/till/Documents/git/Ratio Calculator/Ratio Calculator/Ratio Calculator Macro 2.txt</location>
+		</link>
+		<link>
+			<name>Ratio Calculator Macro.txt</name>
+			<type>1</type>
+			<location>/Users/till/Documents/git/Ratio Calculator/Ratio Calculator/Ratio Calculator Macro.txt</location>
+		</link>
+		<link>
+			<name>ratio_calculator.txt</name>
+			<type>1</type>
+			<location>/Users/till/Documents/git/Ratio Calculator/Ratio Calculator/ratio_calculator.txt</location>
+		</link>
+	</linkedResources>
 </projectDescription>
