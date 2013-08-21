@@ -18,12 +18,12 @@ import java.util.ArrayList;
 /**
  * Calculates average intensities.
  * @author Till Andlauer (till@andlauer.net)
- * @version 1.0 - 12-10-08
+ * @version 1.1 - 13-08-21
  */
 public class Intensity_Calculator implements PlugIn
     {
 	/** Title for dialogs and error messages. */
-    private String title = "Intensity Calculator v1.0"; // title for dialogs and error messages
+    private String title = "Intensity Calculator v1.1"; // title for dialogs and error messages
 	/** Error message when out of memory */
     private String memoryError = "Out of memory...";
 	/** Error message when file couldn't be saved */

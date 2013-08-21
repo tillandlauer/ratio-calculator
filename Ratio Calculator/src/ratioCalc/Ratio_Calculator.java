@@ -24,12 +24,12 @@ import java.util.ArrayList;
 /**
  * Calculates ratios between all pixels of two image stacks.
  * @author Till Andlauer (till@andlauer.net)
- * @version 1.30a - 12-09-26
+ * @version 1.31 - 13-08-21
  */
 public class Ratio_Calculator implements PlugIn
     {
 	/** Title for dialogs and error messages. */
-    private String title = "Ratio Calculator v1.30a"; // title for dialogs and error messages
+    private String title = "Ratio Calculator v1.31"; // title for dialogs and error messages
 	/** Error message when out of memory */
     private String memoryError = "Out of memory...";
 	/** Error message when file couldn't be saved */
