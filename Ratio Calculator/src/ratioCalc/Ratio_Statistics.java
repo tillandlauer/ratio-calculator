@@ -1,5 +1,10 @@
 package ratioCalc;
 import ij.IJ;
+import ij.ImagePlus;
+import ij.WindowManager;
+import ij.gui.NewImage;
+import ij.measure.ResultsTable;
+import ij.process.ImageProcessor;
 import ij.text.TextPanel;
 
 import java.util.ArrayList;
@@ -14,6 +19,18 @@ public class Ratio_Statistics
     private String dir = ""; // dir for saving files manually
     private String[] xTitle; // x-labels for the different files (statistics)
 
+	private int drawMax=0;
+	private double normValue=0.0d;
+	private double defaultScale=0.0d;
+	private int maxPossibleValue=0;
+	private int scaleOption=0;
+	private long maskCounter=0;
+	private long satCounter=0;
+	public boolean logWindow=false;
+	private String prefix="";
+	private String memoryError="";
+	private String title="";
+    
     public Ratio_Statistics(int nFiles, String directory, String[] names)
     	{
     	files = nFiles;
@@ -21,6 +38,22 @@ public class Ratio_Statistics
     	xTitle = names;
     	}
 
+    
+    public Ratio_Statistics(int drawMax2, double normValue2, double defaultScale2, int maxPossibleValue2, int scaleOption2, long maskCounter2, long satCounter2, boolean logWindow2, String prefix2, String memoryError2, String title2)
+		{
+    	drawMax = drawMax2;
+    	normValue = normValue2;
+		defaultScale = defaultScale2;
+        maxPossibleValue = maxPossibleValue2;
+        scaleOption = scaleOption2;
+        maskCounter = maskCounter2;
+        satCounter = satCounter2;
+        logWindow = logWindow2;
+        prefix = prefix2;
+        memoryError = memoryError2;
+    	title = title2;
+		}
+    
     
     public static double getMean(int[] data) // used for calculating the mean histogram, calculates the average of a bin 
         {
@@ -60,6 +93,7 @@ public class Ratio_Statistics
 		return stdDev;
         }
 
+    
     public static double getSD(double[] data, double mean) // used for calculating the standard deviation of a mean histogram bin 
 	    {
 		int n = data.length;
@@ -203,7 +237,8 @@ public class Ratio_Statistics
         uStat = TestUtils.t((double[])data.get(t1-1),(double[])data.get(t2-1)); // T-test of two files
         tp.append("T statistic: "+IJ.d2s(uStat,0));
         if (TestUtils.tTest((double[])data.get(t1-1),(double[])data.get(t2-1), bon)) tp.append("Significant.");
-        else tp.append("Not significant in case of "+nTests+" tests.");
+        else if (TestUtils.tTest((double[])data.get(t1-1),(double[])data.get(t2-1), alpha)) tp.append("Not significant in case of "+nTests+" tests.");
+        else tp.append("Not significant.");
         tp.append("");
         }
     t1++;
@@ -267,7 +302,8 @@ public class Ratio_Statistics
 	        uStat = mwtA.mannWhitneyU((double[])data.get(t1-1),(double[])data.get(t2-1)); // MWU test of two files
 	        tp.append("U statistic: "+IJ.d2s(uStat,0));
 	        if (pValue<bon) tp.append("Significant.");
-	        else tp.append("Not significant in case of "+nTests+" tests.");
+	        else if (pValue<alpha) tp.append("Not significant in case of "+nTests+" tests.");
+	        else tp.append("Not significant.");
 	        tp.append("");
 	        }
 	    t1++;
@@ -325,6 +361,49 @@ public class Ratio_Statistics
 
 
     /**
+     * Divides an array into two halves; the input already has to be sorted
+     *
+     * @param matrix <code>double[]</code> array
+     * @return <code>double[x][y]</code>, <code>x=0</code>: lower half, <code>x=1</code>: upper half 
+	  * @see calcStats
+     */
+    protected static int[][] getHalf(int[] matrix) // Divide a matrix into two halves. The input matrix already has to be sorted. Used by calcStats().
+       {        
+       int[] result_below;
+       int[] result_above;
+
+       if (matrix.length % 2 == 1) // odd size
+           {
+           int size = (int)(matrix.length-1)/2;
+           result_below = new int[size];
+           result_above = new int[size];
+           for (int i=0; i<size; i++)
+               {
+               result_below[i] = matrix[i];
+               result_above[i] = matrix[size+1+i];
+               }
+           }   
+       else // even size
+           {
+           int size = (int)Math.round(((matrix.length-1)/2.0d)-0.5d);
+           result_below = new int[size];
+           result_above = new int[size];
+           for (int i=0; i<size; i++)
+               {
+               result_below[i] = matrix[i];
+               result_above[i] = matrix[size+i];
+               }
+           }   
+
+       int[][] result = new int[2][result_below.length];
+       result[0] = result_below;
+       result[1] = result_above;    
+           
+       return result;        
+       }
+
+
+    /**
      * Calculates the min/max values of an array
      *
      * @param matrix <code>double[]</code> array
@@ -346,5 +425,143 @@ public class Ratio_Statistics
        return minMax;        
        }
    
+    
+    /**
+     * Calculates the min/max values of an array
+     *
+     * @param matrix <code>double[]</code> array
+     * @return <code>double[x]</code>, <code>x=0</code>: minimum, <code>x=1</code>: maximum 
+	  * @see calcStats
+     */
+    protected static int[] getMinMax(int[] matrix) // Get min/max values of a matrix. Used by calcStats().
+       {
+       int[] minMax = new int[2];
+       minMax[0] = matrix[0];
+       minMax[1] = matrix[0];
+         
+       for (int i=0; i<matrix.length; i++)
+           {  
+           if (matrix[i] < minMax[0]) minMax[0] = matrix[i];
+           if (matrix[i] > minMax[1]) minMax[1] = matrix[i];
+           }  
+
+       return minMax;        
+       }
+
+
+    /**
+     * Calculate histograms.
+     *
+     * @param histoData the actual input data
+     * @param xSize the width of the histogram
+     * @param ySize the height of the histogram
+     * @param bins the number of bins
+     * @return the image plus
+     */
+    public HistoWrapper calcHisto(double[] histoData, int xSize, int ySize, int bins, boolean lowHisto, boolean logWindow2) // Generate histogram plot & table from a ratio matrix.
+        {
+    	logWindow = logWindow2;
+    	int drawMax_temp = drawMax;
+    	if (lowHisto) drawMax = (int)Math.round(drawMax/normValue);
+        int[] histoSize = new int[2];
+        histoSize[0] = xSize; // width of the histogram window
+        histoSize[1] = ySize; // height of the histogram window
+		double maxYvalue = (double)defaultScale; // max frequency (-> scale down all values to this factor, even for results table, if scaleOption=0)       
+        if (bins > histoSize[0]) histoSize[0]=bins; // otherwise no output is created.        
+        double factor = (double)maxPossibleValue/(double)bins; // factor for scaling frequencies into the final bins
+        int binWidth = (int)Math.round(histoSize[0] / (bins-1.0d)); // width of each bin; only for plotting
+        histoSize[0] = histoSize[0] + binWidth; // otherwise the last bin gets cut off during plotting
+        double[] histo = new double[bins+1]; // array for the final, binned frequencies
+		int realBin = 0; // temporary variable for final bins
+
+        for (int i=0; i<histoData.length; i++) // put frequencies into final bins
+            {
+            realBin = (int)Math.round(i/factor); // each value of histoData corresponds to a rank
+            if (realBin>bins) realBin = bins; // corrects for rounding errors
+		    histo[realBin] = histo[realBin] + histoData[i]; // add the frequencies from histoData to the bins
+            }
+        
+        double max = histo[0]; // find the maximum frequency (for scaling)
+        for (int i=0; i<histo.length; i++)
+            {  
+            if (histo[i] > max) max = histo[i];
+            }  
+
+        boolean tempScale = false;
+        if (scaleOption == 3) // normalize all bins by total amount of data
+            {
+            long pixels = maskCounter-satCounter; // total amount of data
+            double maxScale = (double)defaultScale; // scale by this factor after normalization to get values back >1
+            for (int i=0; i<histo.length; i++)
+                {  
+                histo[i] = maxScale * (histo[i] / pixels); // normalize and scale all bins
+                }  
+            double compMax = maxScale*(max/pixels); // highest normalized value
+            if (compMax > drawMax) // test whether highest value fits into the plot
+                {
+                IJ.log("Caution: Histogram was cut off, consider re-plotting it. Max value: "+IJ.d2s(compMax,0)+" ("+IJ.d2s(drawMax,0)+")");
+                logWindow = true;
+                }
+            max = (int)drawMax; // set height of plot to the value entered by the user
+            scaleOption = 1; // continue plotting in the scale to max mode
+            tempScale = true;
+            }
+
+        if (scaleOption != 0) maxYvalue = max; // Fixed value scaling off
+        double factor2 = max / maxYvalue; // scaling factor for the frequencies      
+        double scaleHeight = (double)histoSize[1] / maxYvalue; // scaling factor for the image (for plotting)                
+        if (scaleOption == 2) // No scaling 
+            {
+            scaleHeight = 1;
+            if ((int)max>histoSize[1]) histoSize[1] = (int)max; // set the image height to the max. frequency
+            }
+        if (tempScale) scaleOption = 3; // restore original scaleOption for next plot
+
+        String imp_out_title = prefix+"Histogram plot";
+        ImagePlus imp_out = NewImage.createByteImage(imp_out_title, histoSize[0], histoSize[1], 1, 1);
+        if (imp_out == null) // produce an error if this fails
+            {
+            IJ.error(title, memoryError);
+            return null;
+            }
+        WindowManager.checkForDuplicateName = true; // add a number to the title if name already exists  
+
+        ImageProcessor ip_out = imp_out.getProcessor();
+
+        ResultsTable rt = ResultsTable.getResultsTable();
+        rt.reset();
+        rt.setPrecision(9);
+        int picPos = 0; // position within the image
+        double maxLoop = maxYvalue*scaleHeight;
+
+        for(int i=0; i<=bins; i++)
+            {
+            histo[i] = Math.round(histo[i]/factor2); // scaling of frequencies to a fixed value
+
+            rt.incrementCounter();
+            rt.addValue("Frequency", histo[i]);
+
+            histo[i] = Math.round(histo[i] * scaleHeight); // scaling for the plot
+            for(int j=0; j<maxLoop; j++) // create image
+                {
+                for (int k=0; k<binWidth; k++)
+                    {
+                    if(j<=histo[i]) ip_out.putPixel(picPos+k,j,255);
+                    else ip_out.putPixel(picPos+k,j,0);
+                    }
+                }
+            picPos = picPos + binWidth; // move on to the next bin
+            }
+
+        rt.show("Results");
+        ip_out.flipVertical();
+        
+        HistoWrapper hw = new HistoWrapper(); // Object containing histo image and table
+        hw.setImage(imp_out);
+        hw.setTable(rt);
+        
+        drawMax = drawMax_temp;
+        return hw;
+        }
     
     } 

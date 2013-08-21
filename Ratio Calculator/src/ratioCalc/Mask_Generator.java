@@ -379,7 +379,7 @@ public class Mask_Generator implements PlugIn
 			{
 			String[] ints = {"nBins", "cutOff"};
 			String[] doubles = {"defaultThreshold", "factor"};
-			String[] booleans = {"rgb", "dupl", "merge", "thresh", "tSlice", "iThresh", "showRes", "manual", "ratio", "mask", "keepAM", "perc"};
+			String[] booleans = {"rgb", "dupl", "merge", "thresh", "tSlice", "iThresh", "showRes", "manual", "ratio", "maskM", "keepAM", "perc"};
 			int cInt = 0;
 			double cDouble = 0.0d;
 			boolean cBool = false;
@@ -391,10 +391,10 @@ public class Mask_Generator implements PlugIn
 	    	if (!rc.error) cutOff=cInt;
 	    	else rc.error=false;
 
-	    	cDouble = rc.getInt(doubles[0]);
+	    	cDouble = rc.getDouble(doubles[0]);
 	    	if (!rc.error) defaultThreshold=cDouble;
 	    	else rc.error=false;
-	    	cDouble = rc.getInt(doubles[1]);
+	    	cDouble = rc.getDouble(doubles[1]);
 	    	if (!rc.error) factor=cDouble;
 	    	else rc.error=false;
 	    	

@@ -5,14 +5,14 @@ import ij.ImageStack;
 import ij.Macro;
 import ij.WindowManager;
 import ij.gui.GenericDialog;
-import ij.gui.NewImage;
 import ij.io.DirectoryChooser;
 import ij.io.FileSaver;
 import ij.measure.ResultsTable;
 import ij.plugin.PlugIn;
 import ij.process.ImageProcessor;
+import ij.text.TextPanel;
+import ij.text.TextWindow;
 
-import java.io.IOException;
 import java.util.ArrayList;
 
 /**
@@ -92,6 +92,10 @@ public class Intensity_Calculator implements PlugIn
     * @see normValue 
     */
     private int drawMax = 520000; // Default image height for histograms (option 4, normalize)
+    /** Height of normalized histogram plots relative to other histograms 
+    * @see drawMax 
+    */
+    private double normValue = 10.0d; // drawMax is divided by this value for normalized histograms
     /** How to scale histograms; set in <code>chooseImages</code> 
     * <br><code>0</code> = Scale the max value of data & image to a fixed value (<code>defaultScale</code>)  
     * <br><code>1</code> = Don't change the data; for display only scale the max value to the height of the image window  
@@ -134,7 +138,23 @@ public class Intensity_Calculator implements PlugIn
 
         IJ.showStatus("The calculation took "+IJ.d2s(((double)System.currentTimeMillis()-start_time)/1000.0d, 2)+" seconds.");
         if (saveFiles) IJ.log("Files saved to: "+saveDir);
-        if (logWindow) IJ.log(""); // if the log window is open, add a blank line
+        if (logWindow) 
+	    	{
+	    	if (saveFiles)
+	        	{
+	        	TextWindow tw = new TextWindow("Log Temp", IJ.getLog(), 500, 500);
+	        	TextPanel tp = tw.getTextPanel();
+	        	tp.saveAs(saveDir+prefix+"Log.txt");
+	        	tw.close();
+	        	}
+	    	
+	    	if (keepFiles) IJ.log(""); // if the log window is open, add a blank line
+	    	else
+	        	{
+	        	IJ.selectWindow("Log");
+	        	IJ.run("Close");
+	        	}
+	    	}
         IJ.freeMemory();
         }
 
@@ -146,11 +166,13 @@ public class Intensity_Calculator implements PlugIn
 		if (rc.error) return false;
 		else
 			{
-			String[] ints = {"histoBins", "defaultScale", "drawMax", "scaleOption"};
+			String[] ints = {"histoBins", "defaultScaleInt", "drawMaxInt", "scaleOption"};
+			String[] doubles = {"normValueInt"};
 			String[] strings = {"prefix"};
-			String[] booleans = {"keepFiles", "saveFiles", "histo", "statistics", "stripStats", "mask", "showUnbinned", "logInfo"};
+			String[] booleans = {"keepFiles", "saveFiles", "histo", "statistics", "stripStats", "mask", "showUnbinned", "logInfo", "triple"};
 
 			int cInt = 0;
+			double cDouble = 0.0d;
 			String cString = "";
 			boolean cBool = false;
 			
@@ -165,6 +187,10 @@ public class Intensity_Calculator implements PlugIn
 	    	else rc.error=false;
 	    	cInt = rc.getInt(ints[3]);
 	    	if (!rc.error) scaleOption=cInt;
+	    	else rc.error=false;
+
+	    	cDouble = rc.getDouble(doubles[0]);
+	    	if (!rc.error) normValue=cDouble;
 	    	else rc.error=false;
 
 	    	cString = rc.getValue(strings[0]);
@@ -194,6 +220,9 @@ public class Intensity_Calculator implements PlugIn
 	    	else rc.error=false;
 	    	cBool = rc.getBoolean(booleans[7]);
 	    	if (!rc.error) logInfo=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[8]);
+	    	if (!rc.error) triple=cBool;
 	    	else rc.error=false;
 			}
 		return true;
@@ -330,6 +359,7 @@ public class Intensity_Calculator implements PlugIn
 
         // process and display the results
         ResultsTable rt;
+        Ratio_InOut rioT = new Ratio_InOut(saveError, saveDir);
         if (showUnbinned) // show original data
             {
             rt = ResultsTable.getResultsTable();        
@@ -343,7 +373,7 @@ public class Intensity_Calculator implements PlugIn
                 if (triple) rt.addValue("frequency 3",histoData[2][i]);
                 }
             rt.show("Results");
-            if (saveFiles) saveTable(rt, prefix+"Original Data");                      
+            if (saveFiles) rioT.saveTable(rt, prefix+"Original Data");                      
             else IJ.renameResults("Results", prefix+"Original Data"); 
             }
 
@@ -351,7 +381,7 @@ public class Intensity_Calculator implements PlugIn
             {
             IJ.showStatus("Calculating statistics...");
             rt = calcStats(histoData);
-            if (saveFiles) saveTable(rt, prefix+"Statistics");
+            if (saveFiles) rioT.saveTable(rt, prefix+"Statistics");
             else IJ.renameResults("Results", prefix+"Statistics");                             
             }
 
@@ -359,8 +389,10 @@ public class Intensity_Calculator implements PlugIn
             {
             IJ.showStatus("Generating histogram...");
             HistoWrapper hw; // Object containing histo image and table
+            Ratio_Statistics rs_histo = new Ratio_Statistics(drawMax, normValue, defaultScale, maxPossibleValue, scaleOption, maskCounter, satCounter, logWindow, prefix, memoryError, title);
             FileSaver fs;           
-            hw = calcHisto(histoData[0], histoX, histoY, histoBins, false);
+            hw = rs_histo.calcHisto(histoData[0], histoX, histoY, histoBins, false, logWindow);
+    		logWindow = rs_histo.logWindow;
             ImagePlus img_histo = hw.getImage(); 
             if (img_histo == null) return false;
             img_histo.show();               
@@ -369,11 +401,12 @@ public class Intensity_Calculator implements PlugIn
                 fs = new FileSaver(img_histo);
                 fs.saveAsTiff(saveDir+img_histo.getTitle()+" 1.tif");
                 img_histo.close();
-                saveTable(hw.getTable(), prefix+"Histogram 1");
+                rioT.saveTable(hw.getTable(), prefix+"Histogram 1");
                 }
             else IJ.renameResults("Results", prefix+"Histogram 1");               
 
-            hw = calcHisto(histoData[1], histoX, histoY, histoBins, false);
+            hw = rs_histo.calcHisto(histoData[1], histoX, histoY, histoBins, false, logWindow);
+    		logWindow = rs_histo.logWindow;
             img_histo = hw.getImage(); 
             if (img_histo == null) return false;
             img_histo.show();               
@@ -382,13 +415,14 @@ public class Intensity_Calculator implements PlugIn
                 fs = new FileSaver(img_histo);
                 fs.saveAsTiff(saveDir+img_histo.getTitle()+" 2.tif");
                 img_histo.close();
-                saveTable(hw.getTable(), prefix+"Histogram 2");
+                rioT.saveTable(hw.getTable(), prefix+"Histogram 2");
                 }
             else IJ.renameResults("Results", prefix+"Histogram 2");               
 
             if (triple)
             	{
-                hw = calcHisto(histoData[2], histoX, histoY, histoBins, false);
+                hw = rs_histo.calcHisto(histoData[2], histoX, histoY, histoBins, false, logWindow);
+        		logWindow = rs_histo.logWindow;
                 img_histo = hw.getImage(); 
                 if (img_histo == null) return false;
                 img_histo.show();               
@@ -397,7 +431,7 @@ public class Intensity_Calculator implements PlugIn
                     fs = new FileSaver(img_histo);
                     fs.saveAsTiff(saveDir+img_histo.getTitle()+" 3.tif");
                     img_histo.close();
-                    saveTable(hw.getTable(), prefix+"Histogram 3");
+                    rioT.saveTable(hw.getTable(), prefix+"Histogram 3");
                     }
                 else IJ.renameResults("Results", prefix+"Histogram 3");               
             	}
@@ -416,28 +450,6 @@ public class Intensity_Calculator implements PlugIn
         } // end of calcIntensities
 
 
-    /**
-     * Save a ResultsTable
-     *
-     * @param rt ResultsTable
-     * @param tableTitle Filename
-     */
-    private void saveTable(ResultsTable rt, String tableTitle) // Save a results table
-        {
-        try 
-            { 
-//            SaveDialog sd = new SaveDialog("Save "+tableTitle, tableTitle, ".xls");
-            rt.saveAs(saveDir+tableTitle+".xls");
-            } 
-        catch (IOException e) 
-            {
-            IJ.error(saveError); 
-            } 
-        ij.text.TextWindow tw = ResultsTable.getResultsWindow(); 
-        tw.close(false);
-        }
-
-    
     /**
      * Calculate statistics of the ratio data
      * <br>The output table contains Minimum, Quartile 1, Median, Quartile 3, Maximum
@@ -534,12 +546,12 @@ public class Intensity_Calculator implements PlugIn
         al = new ArrayList<Integer>(1);
 
         // calculate the statistics
-        double median = getMedian(results);
-        int[][] halfs = getHalf(results);
-        double q1 = getMedian(halfs[0]);
-        double q2 = getMedian(halfs[1]);
-        int[] minMax = getMinMax(results);
-        double mean = getMean(results);
+        double median = Ratio_Statistics.getMedian(results, false); // sorting not necessary because this list already is sorted.
+        int[][] halfs = Ratio_Statistics.getHalf(results);
+        double q1 = Ratio_Statistics.getMedian(halfs[0], false);
+        double q2 = Ratio_Statistics.getMedian(halfs[1], false);
+        int[] minMax = Ratio_Statistics.getMinMax(results);
+        double mean = Ratio_Statistics.getMean(results);
         
         ResultsTable rt = ResultsTable.getResultsTable();        
         rt.reset();
@@ -556,228 +568,6 @@ public class Intensity_Calculator implements PlugIn
         return rt;
         } // end of calcStats
 
-
-     /**
-      * Divides an array into two halves; the input already has to be sorted
-      *
-      * @param matrix <code>double[]</code> array
-      * @return <code>double[x][y]</code>, <code>x=0</code>: lower half, <code>x=1</code>: upper half 
-	  * @see calcStats
-      */
-     private static int[][] getHalf(int[] matrix) // Divide a matrix into two halves. The input matrix already has to be sorted. Used by calcStats().
-        {        
-        int[] result_below;
-        int[] result_above;
-
-        if (matrix.length % 2 == 1) // odd size
-            {
-            int size = (int)(matrix.length-1)/2;
-            result_below = new int[size];
-            result_above = new int[size];
-            for (int i=0; i<size; i++)
-                {
-                result_below[i] = matrix[i];
-                result_above[i] = matrix[size+1+i];
-                }
-            }   
-        else // even size
-            {
-            int size = (int)Math.round(((matrix.length-1)/2.0d)-0.5d);
-            result_below = new int[size];
-            result_above = new int[size];
-            for (int i=0; i<size; i++)
-                {
-                result_below[i] = matrix[i];
-                result_above[i] = matrix[size+i];
-                }
-            }   
-
-        int[][] result = new int[2][result_below.length];
-        result[0] = result_below;
-        result[1] = result_above;    
-            
-        return result;        
-        }
-
-
-     /**
-      * Calculates the min/max values of an array
-      *
-      * @param matrix <code>double[]</code> array
-      * @return <code>double[x]</code>, <code>x=0</code>: minimum, <code>x=1</code>: maximum 
-	  * @see calcStats
-      */
-     private static int[] getMinMax(int[] matrix) // Get min/max values of a matrix. Used by calcStats().
-        {
-        int[] minMax = new int[2];
-        minMax[0] = matrix[0];
-        minMax[1] = matrix[0];
-          
-        for (int i=0; i<matrix.length; i++)
-            {  
-            if (matrix[i] < minMax[0]) minMax[0] = matrix[i];
-            if (matrix[i] > minMax[1]) minMax[1] = matrix[i];
-            }  
-
-        return minMax;        
-        }
-
-
-     /**
-      * Calculates the median of an array; the input already has to be sorted
-      * <br>In case of ties the lower value is chosen
-      *
-      * @param matrix <code>double[]</code> array
-      * @return Median 
-	  * @see calcStats
-      */
-     private static double getMedian(int[] matrix) // Get median value of a matrix. The input matrix already has to be sorted. Used by calcStats().
-        {
-        double medPos = (matrix.length+1)/2.0d;
-        double median = 0;
-        
-        if (matrix.length % 2 == 1) // odd size
-            {
-            median = matrix[(int)medPos-1];
-            }   
-        else // even size
-            {
-            int bM = (int)Math.round(medPos-1.5d);
-            int aM = (int)Math.round(medPos-0.5d);
-            double vbm = matrix[bM];
-            double vam = matrix[aM];
-            median = (vbm+vam)/2.0d;
-            }   
-        return median;        
-        }
-
-
-     private static double getMean(int[] data)
-     {
-		int n = data.length;
-		double sum=0.0d;
-		for (int i=0; i<n; i++) 
-		  {
-		  sum += data[i];
-		  }
-		double result = sum/n;
-		return result;
-     }
-        
-     
-    /**
-     * Calc histo.
-     *
-     * @param histoData the histo data
-     * @param xSize the x size
-     * @param ySize the y size
-     * @param bins the bins
-     * @return the image plus
-     */
-    public HistoWrapper calcHisto(double[] histoData, int xSize, int ySize, int bins, boolean lowHisto) // Generate histogram plot & table from a ratio matrix.
-        {
-    	int drawMax_temp = drawMax;
-        int[] histoSize = new int[2];
-        histoSize[0] = xSize; // width of the histogram window
-        histoSize[1] = ySize; // height of the histogram window
-		double maxYvalue = (double)defaultScale; // max frequency (-> scale down all values to this factor, even for results table, if scaleOption=0)       
-        if (bins > histoSize[0]) histoSize[0]=bins; // otherwise no output is created.        
-        double factor = (double)maxPossibleValue/(double)bins; // factor for scaling frequencies into the final bins
-        int binWidth = (int)Math.round(histoSize[0] / (bins-1.0d)); // width of each bin; only for plotting
-        histoSize[0] = histoSize[0] + binWidth; // otherwise the last bin gets cut off during plotting
-        double[] histo = new double[bins+1]; // array for the final, binned frequencies
-		int realBin = 0; // temporary variable for final bins
-
-        for (int i=0; i<histoData.length; i++) // put frequencies into final bins
-            {
-            realBin = (int)Math.round(i/factor); // each value of histoData corresponds to a rank
-            if (realBin>bins) realBin = bins; // corrects for rounding errors
-		    histo[realBin] = histo[realBin] + histoData[i]; // add the frequencies from histoData to the bins
-            }
-        
-        double max = histo[0]; // find the maximum frequency (for scaling)
-        for (int i=0; i<histo.length; i++)
-            {  
-            if (histo[i] > max) max = histo[i];
-            }  
-
-        boolean tempScale = false;
-        if (scaleOption == 3) // normalize all bins by total amount of data
-            {
-            long pixels = maskCounter-satCounter; // total amount of data
-            double maxScale = (double)defaultScale; // scale by this factor after normalization to get values back >1
-            for (int i=0; i<histo.length; i++)
-                {  
-                histo[i] = maxScale * (histo[i] / pixels); // normalize and scale all bins
-                }  
-            double compMax = maxScale*(max/pixels); // highest normalized value
-            if (compMax > drawMax) // test whether highest value fits into the plot
-                {
-                IJ.log("Caution: Histogram was cut off, consider re-plotting it. Max value: "+IJ.d2s(compMax,0)+" ("+IJ.d2s(drawMax,0)+")");
-                logWindow = true;
-                }
-            max = (int)drawMax; // set height of plot to the value entered by the user
-            scaleOption = 1; // continue plotting in the scale to max mode
-            tempScale = true;
-            }
-
-        if (scaleOption != 0) maxYvalue = max; // Fixed value scaling off
-        double factor2 = max / maxYvalue; // scaling factor for the frequencies      
-        double scaleHeight = (double)histoSize[1] / maxYvalue; // scaling factor for the image (for plotting)                
-        if (scaleOption == 2) // No scaling 
-            {
-            scaleHeight = 1;
-            if ((int)max>histoSize[1]) histoSize[1] = (int)max; // set the image height to the max. frequency
-            }
-        if (tempScale) scaleOption = 3; // restore original scaleOption for next plot
-
-        String imp_out_title = prefix+"Histogram plot";
-        ImagePlus imp_out = NewImage.createByteImage(imp_out_title, histoSize[0], histoSize[1], 1, 1);
-        if (imp_out == null) // produce an error if this fails
-            {
-            IJ.error(title, memoryError);
-            return null;
-            }
-        WindowManager.checkForDuplicateName = true; // add a number to the title if name already exists  
-
-        ImageProcessor ip_out = imp_out.getProcessor();
-
-        ResultsTable rt = ResultsTable.getResultsTable();
-        rt.reset();
-        rt.setPrecision(9);
-        int picPos = 0; // position within the image
-        double maxLoop = maxYvalue*scaleHeight;
-
-        for(int i=0; i<=bins; i++)
-            {
-            histo[i] = Math.round(histo[i]/factor2); // scaling of frequencies to a fixed value
-
-            rt.incrementCounter();
-            rt.addValue("Frequency", histo[i]);
-
-            histo[i] = Math.round(histo[i] * scaleHeight); // scaling for the plot
-            for(int j=0; j<maxLoop; j++) // create image
-                {
-                for (int k=0; k<binWidth; k++)
-                    {
-                    if(j<=histo[i]) ip_out.putPixel(picPos+k,j,255);
-                    else ip_out.putPixel(picPos+k,j,0);
-                    }
-                }
-            picPos = picPos + binWidth; // move on to the next bin
-            }
-
-        rt.show("Results");
-        ip_out.flipVertical();
-        
-        HistoWrapper hw = new HistoWrapper(); // Object containing histo image and table
-        hw.setImage(imp_out);
-        hw.setTable(rt);
-        
-        drawMax = drawMax_temp;
-        return hw;
-        }
-        
 
     /**
      * Choose images.

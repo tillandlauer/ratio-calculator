@@ -16,9 +16,9 @@ import ij.process.ImageConverter;
 import ij.process.ImageProcessor;
 import ij.process.ImageStatistics;
 import ij.process.StackConverter;
+import ij.text.TextPanel;
+import ij.text.TextWindow;
 
-import java.awt.image.IndexColorModel;
-import java.io.IOException;
 import java.util.ArrayList;
 
 /**
@@ -233,7 +233,7 @@ public class Ratio_Calculator implements PlugIn
         if (image) // show the ratio image
             {
             IJ.showStatus("Applying LUT...");
-            img_ratio = spectrumLUT(img_ratio); // change the lookup table
+            img_ratio = Ratio_InOut.spectrumLUT(img_ratio, maxPossibleValue, displayLUT); // change the lookup table
             if (img_ratio == null) return;
             if (image && bitdepth==0) // conversion to 8 bit
                 {
@@ -269,7 +269,23 @@ public class Ratio_Calculator implements PlugIn
 
         IJ.showStatus("The calculation took "+IJ.d2s(((double)System.currentTimeMillis()-start_time)/1000.0d, 2)+" seconds.");
         if (saveFiles) IJ.log("Files saved to: "+saveDir);
-        if (logWindow) IJ.log(""); // if the log window is open, add a blank line
+        if (logWindow) 
+        	{
+        	if (saveFiles)
+	        	{
+	        	TextWindow tw = new TextWindow("Log Temp", IJ.getLog(), 500, 500);
+	        	TextPanel tp = tw.getTextPanel();
+	        	tp.saveAs(saveDir+prefix+"Log.txt");
+	        	tw.close();
+	        	}
+        	
+        	if (keepFiles) IJ.log(""); // if the log window is open, add a blank line
+        	else
+	        	{
+	        	IJ.selectWindow("Log");
+	        	IJ.run("Close");
+	        	}
+        	}
         IJ.freeMemory();
         }
 
@@ -543,6 +559,7 @@ public class Ratio_Calculator implements PlugIn
 
         // process and display the results
         ResultsTable rt;
+        Ratio_InOut rioT = new Ratio_InOut(saveError, saveDir);
         if (showUnbinned && (histo || statistics)) // show original data
             {
             rt = ResultsTable.getResultsTable();        
@@ -557,7 +574,7 @@ public class Ratio_Calculator implements PlugIn
                     rt.addValue("frequency",histoDataS[i]);
                     }
                 rt.show("Results");
-                if (saveFiles) saveTable(rt, prefix+"Original Data");                      
+                if (saveFiles) rioT.saveTable(rt, prefix+"Original Data");                      
                 else IJ.renameResults("Results", prefix+"Original Data"); 
                 }
             if (normHisto)
@@ -570,7 +587,7 @@ public class Ratio_Calculator implements PlugIn
                     rt.addValue("frequency",histoDataN[i]);
                     }
                 rt.show("Results");
-                if (saveFiles) saveTable(rt, prefix+"Original Data (normalized)");                      
+                if (saveFiles) rioT.saveTable(rt, prefix+"Original Data (normalized)");                      
                 else IJ.renameResults("Results", prefix+"Original Data (normalized)");                      
                 }
             }
@@ -586,7 +603,7 @@ public class Ratio_Calculator implements PlugIn
                     ratioData[i][0] = histoDataS[i];
                     }
                 rt = calcStats(ratioData);
-                if (saveFiles) saveTable(rt, prefix+"Statistics");
+                if (saveFiles) rioT.saveTable(rt, prefix+"Statistics");
                 else IJ.renameResults("Results", prefix+"Statistics");                             
                 }
             if (normHisto)
@@ -596,7 +613,7 @@ public class Ratio_Calculator implements PlugIn
                     ratioData[i][0] = histoDataN[i];
                     }
                 rt = calcStats(ratioData);
-                if (saveFiles) saveTable(rt, prefix+"Statistics (normalized)");
+                if (saveFiles) rioT.saveTable(rt, prefix+"Statistics (normalized)");
                 else IJ.renameResults("Results", prefix+"Statistics (normalized)");                      
                 }
            ratioData = new double[1][1];
@@ -606,12 +623,14 @@ public class Ratio_Calculator implements PlugIn
             {
             IJ.showStatus("Generating histogram...");
             HistoWrapper hw; // Object containing histo image and table
+            Ratio_Statistics rs_histo = new Ratio_Statistics(drawMax, normValue, defaultScale, maxPossibleValue, scaleOption, maskCounter, satCounter, logWindow, prefix, memoryError, title);
             FileSaver fs;
             
             if (standHisto)
                 {
-                hw = calcHisto(histoDataS, histoX, histoY, histoBins, false);
-        		histoDataS = new double[1];
+            	hw = rs_histo.calcHisto(histoDataS, histoX, histoY, histoBins, false, logWindow);
+        		logWindow = rs_histo.logWindow;
+                histoDataS = new double[1];
                 ImagePlus img_histoS = hw.getImage(); 
                 if (img_histoS == null) return null;
                 img_histoS.show();               
@@ -620,14 +639,15 @@ public class Ratio_Calculator implements PlugIn
                     fs = new FileSaver(img_histoS);
                     fs.saveAsTiff(saveDir+img_histoS.getTitle()+".tif");
                     img_histoS.close();
-                    saveTable(hw.getTable(), prefix+"Histogram");
+                    rioT.saveTable(hw.getTable(), prefix+"Histogram");
                     }
                 else IJ.renameResults("Results", prefix+"Histogram");               
                 }
 
             if (normHisto)
                 {
-                hw = calcHisto(histoDataN, histoX, histoY, histoBins, true);
+                hw = rs_histo.calcHisto(histoDataN, histoX, histoY, histoBins, true, logWindow);
+        		logWindow = rs_histo.logWindow;
         		histoDataN = new double[1];
                 ImagePlus img_histoN = hw.getImage();
                 if (img_histoN == null) return null;
@@ -638,7 +658,7 @@ public class Ratio_Calculator implements PlugIn
                     fs = new FileSaver(img_histoN);
                     fs.saveAsTiff(saveDir+img_histoN.getTitle()+".tif");
                     img_histoN.close();
-                    saveTable(hw.getTable(), prefix+"Histogram (normalized)");
+                    rioT.saveTable(hw.getTable(), prefix+"Histogram (normalized)");
                     }
                 else IJ.renameResults("Results", prefix+"Histogram (normalized)");                      
                 }
@@ -658,28 +678,6 @@ public class Ratio_Calculator implements PlugIn
 
         return imp_out;
         } // end of calcRatio
-
-
-    /**
-     * Save a ResultsTable
-     *
-     * @param rt ResultsTable
-     * @param tableTitle Filename
-     */
-    private void saveTable(ResultsTable rt, String tableTitle) // Save a results table
-        {
-        try 
-            { 
-//            SaveDialog sd = new SaveDialog("Save "+tableTitle, tableTitle, ".xls");
-            rt.saveAs(saveDir+tableTitle+".xls");
-            } 
-        catch (IOException e) 
-            {
-            IJ.error(saveError); 
-            } 
-        ij.text.TextWindow tw = ResultsTable.getResultsWindow(); 
-        tw.close(false);
-        }
 
 
     /**
@@ -716,11 +714,11 @@ public class Ratio_Calculator implements PlugIn
         ratioList = new ArrayList<Double>(1);
 
         // calculate the statistics
-        double median = getMedian(results); // sorting not necessary because this list already is sorted.
-        double[][] halfs = getHalf(results);
-        double q1 = getMedian(halfs[0]);
-        double q2 = getMedian(halfs[1]);
-        double[] minMax = getMinMax(results);
+        double median = Ratio_Statistics.getMedian(results, false); // sorting not necessary because this list already is sorted.
+        double[][] halfs = Ratio_Statistics.getHalf(results);
+        double q1 = Ratio_Statistics.getMedian(halfs[0], false);
+        double q2 = Ratio_Statistics.getMedian(halfs[1], false);
+        double[] minMax = Ratio_Statistics.getMinMax(results);
 
         double[] value = new double[5];
         value[0] = minMax[0];
@@ -804,216 +802,6 @@ public class Ratio_Calculator implements PlugIn
         
         return rt;
         } // end of calcStats
-
-
-     /**
-      * Divides an array into two halves; the input already has to be sorted
-      *
-      * @param matrix <code>double[]</code> array
-      * @return <code>double[x][y]</code>, <code>x=0</code>: lower half, <code>x=1</code>: upper half 
-	  * @see calcStats
-      */
-     private static double[][] getHalf(double[] matrix) // Divide a matrix into two halves. The input matrix already has to be sorted. Used by calcStats().
-        {        
-        double[] result_below;
-        double[] result_above;
-
-        if (matrix.length % 2 == 1) // odd size
-            {
-            int size = (int)(matrix.length-1)/2;
-            result_below = new double[size];
-            result_above = new double[size];
-            for (int i=0; i<size; i++)
-                {
-                result_below[i] = matrix[i];
-                result_above[i] = matrix[size+1+i];
-                }
-            }   
-        else // even size
-            {
-            int size = (int)Math.round(((matrix.length-1)/2.0d)-0.5d);
-            result_below = new double[size];
-            result_above = new double[size];
-            for (int i=0; i<size; i++)
-                {
-                result_below[i] = matrix[i];
-                result_above[i] = matrix[size+i];
-                }
-            }   
-
-        double[][] result = new double[2][result_below.length];
-        result[0] = result_below;
-        result[1] = result_above;    
-            
-        return result;        
-        }
-
-
-     /**
-      * Calculates the min/max values of an array
-      *
-      * @param matrix <code>double[]</code> array
-      * @return <code>double[x]</code>, <code>x=0</code>: minimum, <code>x=1</code>: maximum 
-	  * @see calcStats
-      */
-     private static double[] getMinMax(double[] matrix) // Get min/max values of a matrix. Used by calcStats().
-        {
-        double[] minMax = new double[2];
-        minMax[0] = matrix[0];
-        minMax[1] = matrix[0];
-          
-        for (int i=0; i<matrix.length; i++)
-            {  
-            if (matrix[i] < minMax[0]) minMax[0] = matrix[i];
-            if (matrix[i] > minMax[1]) minMax[1] = matrix[i];
-            }  
-
-        return minMax;        
-        }
-
-
-     /**
-      * Calculates the median of an array; the input already has to be sorted
-      * <br>In case of ties the lower value is chosen
-      *
-      * @param matrix <code>double[]</code> array
-      * @return Median 
-	  * @see calcStats
-      */
-     private static double getMedian(double[] matrix) // Get median value of a matrix. The input matrix already has to be sorted. Used by calcStats().
-        {
-        double medPos = (matrix.length+1)/2.0d;
-        double median = 0;
-        
-        if (matrix.length % 2 == 1) // odd size
-            {
-            median = matrix[(int)medPos-1];
-            }   
-        else // even size
-            {
-            int bM = (int)Math.round(medPos-1.5d);
-            int aM = (int)Math.round(medPos-0.5d);
-            double vbm = matrix[bM];
-            double vam = matrix[aM];
-            median = (vbm+vam)/2.0d;
-            }   
-        return median;        
-        }
-
-
-    /**
-     * Calculate histograms.
-     *
-     * @param histoData the actual input data
-     * @param xSize the width of the histogram
-     * @param ySize the height of the histogram
-     * @param bins the number of bins
-     * @return the image plus
-     */
-    public HistoWrapper calcHisto(double[] histoData, int xSize, int ySize, int bins, boolean lowHisto) // Generate histogram plot & table from a ratio matrix.
-        {
-    	int drawMax_temp = drawMax;
-    	if (lowHisto) drawMax = (int)Math.round(drawMax/normValue);
-        int[] histoSize = new int[2];
-        histoSize[0] = xSize; // width of the histogram window
-        histoSize[1] = ySize; // height of the histogram window
-		double maxYvalue = (double)defaultScale; // max frequency (-> scale down all values to this factor, even for results table, if scaleOption=0)       
-        if (bins > histoSize[0]) histoSize[0]=bins; // otherwise no output is created.        
-        double factor = (double)maxPossibleValue/(double)bins; // factor for scaling frequencies into the final bins
-        int binWidth = (int)Math.round(histoSize[0] / (bins-1.0d)); // width of each bin; only for plotting
-        histoSize[0] = histoSize[0] + binWidth; // otherwise the last bin gets cut off during plotting
-        double[] histo = new double[bins+1]; // array for the final, binned frequencies
-		int realBin = 0; // temporary variable for final bins
-
-        for (int i=0; i<histoData.length; i++) // put frequencies into final bins
-            {
-            realBin = (int)Math.round(i/factor); // each value of histoData corresponds to a rank
-            if (realBin>bins) realBin = bins; // corrects for rounding errors
-		    histo[realBin] = histo[realBin] + histoData[i]; // add the frequencies from histoData to the bins
-            }
-        
-        double max = histo[0]; // find the maximum frequency (for scaling)
-        for (int i=0; i<histo.length; i++)
-            {  
-            if (histo[i] > max) max = histo[i];
-            }  
-
-        boolean tempScale = false;
-        if (scaleOption == 3) // normalize all bins by total amount of data
-            {
-            long pixels = maskCounter-satCounter; // total amount of data
-            double maxScale = (double)defaultScale; // scale by this factor after normalization to get values back >1
-            for (int i=0; i<histo.length; i++)
-                {  
-                histo[i] = maxScale * (histo[i] / pixels); // normalize and scale all bins
-                }  
-            double compMax = maxScale*(max/pixels); // highest normalized value
-            if (compMax > drawMax) // test whether highest value fits into the plot
-                {
-                IJ.log("Caution: Histogram was cut off, consider re-plotting it. Max value: "+IJ.d2s(compMax,0)+" ("+IJ.d2s(drawMax,0)+")");
-                logWindow = true;
-                }
-            max = (int)drawMax; // set height of plot to the value entered by the user
-            scaleOption = 1; // continue plotting in the scale to max mode
-            tempScale = true;
-            }
-
-        if (scaleOption != 0) maxYvalue = max; // Fixed value scaling off
-        double factor2 = max / maxYvalue; // scaling factor for the frequencies      
-        double scaleHeight = (double)histoSize[1] / maxYvalue; // scaling factor for the image (for plotting)                
-        if (scaleOption == 2) // No scaling 
-            {
-            scaleHeight = 1;
-            if ((int)max>histoSize[1]) histoSize[1] = (int)max; // set the image height to the max. frequency
-            }
-        if (tempScale) scaleOption = 3; // restore original scaleOption for next plot
-
-        String imp_out_title = prefix+"Histogram plot";
-        ImagePlus imp_out = NewImage.createByteImage(imp_out_title, histoSize[0], histoSize[1], 1, 1);
-        if (imp_out == null) // produce an error if this fails
-            {
-            IJ.error(title, memoryError);
-            return null;
-            }
-        WindowManager.checkForDuplicateName = true; // add a number to the title if name already exists  
-
-        ImageProcessor ip_out = imp_out.getProcessor();
-
-        ResultsTable rt = ResultsTable.getResultsTable();
-        rt.reset();
-        rt.setPrecision(9);
-        int picPos = 0; // position within the image
-        double maxLoop = maxYvalue*scaleHeight;
-
-        for(int i=0; i<=bins; i++)
-            {
-            histo[i] = Math.round(histo[i]/factor2); // scaling of frequencies to a fixed value
-
-            rt.incrementCounter();
-            rt.addValue("Frequency", histo[i]);
-
-            histo[i] = Math.round(histo[i] * scaleHeight); // scaling for the plot
-            for(int j=0; j<maxLoop; j++) // create image
-                {
-                for (int k=0; k<binWidth; k++)
-                    {
-                    if(j<=histo[i]) ip_out.putPixel(picPos+k,j,255);
-                    else ip_out.putPixel(picPos+k,j,0);
-                    }
-                }
-            picPos = picPos + binWidth; // move on to the next bin
-            }
-
-        rt.show("Results");
-        ip_out.flipVertical();
-        
-        HistoWrapper hw = new HistoWrapper(); // Object containing histo image and table
-        hw.setImage(imp_out);
-        hw.setTable(rt);
-        
-        drawMax = drawMax_temp;
-        return hw;
-        }
 
 
    /**
@@ -1279,10 +1067,12 @@ public class Ratio_Calculator implements PlugIn
         if (histo)
             {
             HistoWrapper hw; // Object containing histo image and table
-        	
+            Ratio_Statistics rs_histo = new Ratio_Statistics(drawMax, normValue, defaultScale, maxPossibleValue, scaleOption, maskCounter, satCounter, logWindow, prefix, memoryError, title);
+       	
             if (standHisto)
                 {
-                hw = calcHisto(histoDataS, histoX, histoY, histoBins, false);
+                hw = rs_histo.calcHisto(histoDataS, histoX, histoY, histoBins, false, logWindow);
+        		logWindow = rs_histo.logWindow;
          		histoDataS = new double[1];
                 ImagePlus img_histoS = hw.getImage(); 
                 if (img_histoS == null) return;
@@ -1292,7 +1082,8 @@ public class Ratio_Calculator implements PlugIn
 
             if (normHisto) // normalized data
                 {
-                hw = calcHisto(histoDataN, histoX, histoY, histoBins, true);
+                hw = rs_histo.calcHisto(histoDataN, histoX, histoY, histoBins, true, logWindow);
+        		logWindow = rs_histo.logWindow;
                 histoDataN = new double[1];
                 ImagePlus img_histoN = hw.getImage();
                 if (img_histoN == null) return;
@@ -1304,7 +1095,7 @@ public class Ratio_Calculator implements PlugIn
 
         if (image)
             {
-            img_ratio = spectrumLUT(img_ratio); // change the lookup table
+            img_ratio = Ratio_InOut.spectrumLUT(img_ratio, maxPossibleValue, displayLUT); // change the lookup table
             img_ratio.show();
             }
 
@@ -1328,112 +1119,6 @@ public class Ratio_Calculator implements PlugIn
             img_scatter.getProcessor().setMinAndMax(0,iSt.max);
             img_scatter.show();
             }
-        }
-
-
-    /**
-     * Spectrum lut.
-     *
-     * @param img the img
-     * @return the image plus
-     */
-    public static ImagePlus spectrumLUT(ImagePlus img) // change the lookup table to ratio coding
-        {
-		byte[][] rgb = new byte[3][256]; // array of the rgb values for the LUT
-		int r = 0;
-		int g = 255;
-        int b = 255;
-        int i = 0;
-        
-		for (i=0; i<42; i++) // cyan to blue
-            {
-            rgb[0][i] = (byte)r;
-            rgb[1][i] = (byte)g;
-            rgb[2][i] = (byte)b;
-            g-=6;
-            }
-        g=0;
-
-		for (i=42; i<85; i++) // blue to magenta
-            {
-            rgb[0][i] = (byte)r;
-            rgb[1][i] = (byte)g;
-            rgb[2][i] = (byte)b;
-            r+=6;
-            }
-        r=255;
-
-		for (i=85; i<128; i++) // magenta to black
-            {
-            rgb[0][i] = (byte)r;
-            rgb[1][i] = (byte)g;
-            rgb[2][i] = (byte)b;
-            r-=6;
-            b-=6;
-            }
-        r=g=b=0;
-
-		for (i=128; i<171; i++) // black to green
-            {
-            rgb[0][i] = (byte)r;
-            rgb[1][i] = (byte)g;
-            rgb[2][i] = (byte)b;
-            g+=6;
-            }
-        g=255;
-
-		for (i=171; i<213; i++) // green to yellow
-            {
-            rgb[0][i] = (byte)r;
-            rgb[1][i] = (byte)g;
-            rgb[2][i] = (byte)b;
-            r+=6;
-            }
-        r=255;
-
-		for (i=213; i<256; i++) // yellow to red
-            {
-            rgb[0][i] = (byte)r;
-            rgb[1][i] = (byte)g;
-            rgb[2][i] = (byte)b;
-            g-=6;
-            }
-        
-        if (displayLUT) // show the LUT as an extra image
-            {
-            int height = 10; // height of image
-            String imp_out_title = "LUT";
-            ImagePlus imp_out = NewImage.createRGBImage(imp_out_title, rgb[0].length, height, 1, 1);
-            WindowManager.checkForDuplicateName = true; // add a number to the title if name already exists  
-
-            ImageProcessor ip_out = imp_out.getProcessor();
-            int bins = rgb[0].length; // number of colours
-            int binWidth = 1; // width for each colour
-            int picPos = 0; // counter within image
-            int values[] = new int[3]; // red, green, blue
-    
-            for(i=0; i<bins; i++)
-                {
-                for(int j=0; j<height; j++)
-                    {
-                    for (int k=0; k<binWidth; k++)
-                        {
-                        values[0] = rgb[0][i]&0xff;
-                        values[1] = rgb[1][i]&0xff;
-                        values[2] = rgb[2][i]&0xff;
-                        ip_out.putPixel(picPos+k,j,values);
-                        }
-                    }
-                picPos = picPos + binWidth; // move to next colour
-                }
-            imp_out.show();
-            }
-
-		IndexColorModel icm = new IndexColorModel(8, 256, rgb[0], rgb[1], rgb[2]); // create the LUT
-		img.getProcessor().setColorModel(icm); // apply the LUT
-        img.getProcessor().setMinAndMax(0,maxPossibleValue); // scale the LUT
-
-        return img; 
         }
 
 

@@ -23,6 +23,8 @@ public class Ratio_InOut
     private int nFiles = 0; // number of files to be opened
     private String directory = ""; // directory for saving files manually
     private static boolean config = false;
+    private String saveError = "Couldn't save file.";
+    private String saveDir = ""; // Directory for saved files
 
     public Ratio_InOut(int files, String dir)
     	{
@@ -30,6 +32,14 @@ public class Ratio_InOut
     	directory = dir;
     	}
 
+    
+    public Ratio_InOut(String saveError2, String dir)
+		{
+        saveError = saveError2;
+        saveDir = dir;
+		}
+    
+    
     protected int[][] loadHistoFilesInt(int ch) // read the data from histogram files for intensity analysis
 	    { 
 	    Vector<StringTokenizer> list = new Vector<StringTokenizer>(0, 16); // content of each file 
@@ -523,20 +533,18 @@ public class Ratio_InOut
         } // end of loadStatList()
     
 
-
     /**
      * Save a ResultsTable
      *
      * @param rt ResultsTable
      * @param tableTitle Filename
      */
-    protected void saveTable(ResultsTable rt, String tableTitle) // Save a results table
+    public void saveTable(ResultsTable rt, String tableTitle) // Save a results table
         {
-    	String saveError = "File "+tableTitle+" couldn't be saved.";
         try 
             { 
 //            SaveDialog sd = new SaveDialog("Save "+tableTitle, tableTitle, ".xls");
-            rt.saveAs(directory+tableTitle+".xls");
+            rt.saveAs(saveDir+tableTitle+".xls");
             } 
         catch (IOException e) 
             {
@@ -546,7 +554,7 @@ public class Ratio_InOut
         tw.close(false);
         }
 
-
+    
     /**
      * Spectrum lut.
      *

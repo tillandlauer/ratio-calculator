@@ -163,7 +163,7 @@ public class Intensity_Analysis implements PlugIn
         ImagePlus img_out; // output image
         FileSaver outFile; // for saving Tiffs
         Ratio_InOut rio = new Ratio_InOut(nFiles, directory);
-        Gnu_Scripts gs = new Gnu_Scripts(plottitle, axislabel, terminal, sd, screen, svg, png, nFiles, xTitle);
+        Gnu_Scripts gs = new Gnu_Scripts(plottitle, axislabel, terminal, sd, screen, svg, png, nFiles, xTitle, nChannels);
 
         if (job==0 || all) // histograms
             {
@@ -316,18 +316,15 @@ public class Intensity_Analysis implements PlugIn
 	            	if (statsMean)
 		            	{            		
 	            		median[i] = Ratio_Statistics.getMean(data[i]); // get the mean for each value (min,q1âmedian,q3,max)
-//	            		median[i] = StatUtils.mean(data[i]); // get the mean for each value (min,q1âmedian,q3,max)
 		            	}
 	            	else // median
 	            		{
 	            		median[i] = Ratio_Statistics.getMedian(data[i], true); // get the median for each value (min,q1âmedian,q3,max)
-//		                median[i] = StatUtils.percentile(data[i], 50); // get the median for each value (min,q1âmedian,q3,max)
 	            		}    
 	
 	                if (statsMean)
 	                	{
 	            		sem[i] = Ratio_Statistics.getSD(data[i],median[i])/Math.sqrt(data[i].length); // get the SEM for each value (min,q1âmedian,q3,max)                	
-//	            		sem[i] = Math.sqrt(StatUtils.variance(data[i], median[i]))/Math.sqrt(data[i].length); // get the SEM for each value (min,q1âmedian,q3,max)                	
 	                	}
 	                else if (!statsSEMed) // MAD
 	                    {
@@ -336,7 +333,6 @@ public class Intensity_Analysis implements PlugIn
 	                        mad[j] = Math.abs(median[i]-data[i][j]); // the difference between the individual values in each file and the median
 	                        }
 		                sem[i] = Ratio_Statistics.getMedian(mad, true); // mad = the median of the differences of the individual values to the median
-//		                sem[i] = StatUtils.percentile(mad, 50); // mad = the median of the differences of the individual values to the median
 	                    }
 	                else
 	                    {
@@ -846,7 +842,7 @@ public class Intensity_Analysis implements PlugIn
         	return false;
         	}
         nChannels = (int)gd.getNextNumber();
-        if ((nChannels < 2) || ((nChannels > 3) && ratios))
+        if ((job!=3) && ((nChannels < 2) || ((nChannels > 3) && ratios)))
         	{
             IJ.error("Unsupported number of channels."); 
         	return false;
@@ -913,17 +909,17 @@ public class Intensity_Analysis implements PlugIn
             if (nChannels==2)
             	{
                 gd.addMessage("Ratio 1: a/b");           	
-                gd.addChoice("Numerator a:", ch_temp, ch_temp[0]);
-                gd.addChoice("Denominator b:", ch_temp, ch_temp[1]);
+                gd.addChoice("Numerator a:", ch_temp, ch_temp[1]);
+                gd.addChoice("Denominator b:", ch_temp, ch_temp[0]);
             	}
             if (nChannels==3)
 	        	{
                 gd.addMessage("Ratio 1: a/b");           	
-	            gd.addChoice("Numerator a:", ch_temp, ch_temp[0]);
-	            gd.addChoice("Denominator b:", ch_temp, ch_temp[1]);
+	            gd.addChoice("Numerator a:", ch_temp, ch_temp[1]);
+	            gd.addChoice("Denominator b:", ch_temp, ch_temp[0]);
                 gd.addMessage("Ratio 2: c/d");           	
-	            gd.addChoice("Numerator c:", ch_temp, ch_temp[0]);
-	            gd.addChoice("Denominator d:", ch_temp, ch_temp[2]);
+	            gd.addChoice("Numerator c:", ch_temp, ch_temp[2]);
+	            gd.addChoice("Denominator d:", ch_temp, ch_temp[0]);
                 gd.addMessage("Ratio 3: e/f");           	
 	            gd.addChoice("Numerator e:", ch_temp, ch_temp[1]);
 	            gd.addChoice("Denominator f:", ch_temp, ch_temp[2]);

@@ -13,6 +13,7 @@ public class Gnu_Scripts
     private boolean png = true; // create .png file
     private int nFiles = 0; // number of files to be opened
     private String[] xTitle; // x-labels for the different files (statistics)
+    private int nChannels = 1;
 
     public Gnu_Scripts(String imageTitle, String xLabel, String term, boolean showErrors, boolean showScreen, boolean createSvg, boolean createPng) 
         {   
@@ -39,6 +40,21 @@ public class Gnu_Scripts
     	xTitle = names;
         }
 
+    
+    public Gnu_Scripts(String imageTitle, String xLabel, String term, boolean showErrors, boolean showScreen, boolean createSvg, boolean createPng, int files, String[] names, int channels) 
+	    {   
+		plottitle = imageTitle;
+		axislabel = xLabel;
+		terminal = term;
+		sd = showErrors;
+		screen = showScreen;
+		svg = createSvg;
+		png = createPng;
+		nFiles = files;
+		xTitle = names;
+		nChannels = channels;
+	    }
+ 
     
     private TextPanel initFile() 
         {
@@ -173,12 +189,13 @@ public class Gnu_Scripts
         if (axislabel!="") tp.append("set xlabel \""+axislabel+"\" offset +0,1 tc rgb \"#062356\"");
         tp.append("set ylabel \"frequency\" offset +2,0 tc rgb \"#062356\"");
         tp.append("set xrange [1:128]");
-        if (both) tp.append("set yrange [-450000:450000]");
+        if (both) tp.append("set yrange [-350000:350000]");
         else tp.append("set yrange [0:450000]");
         tp.append("set style line 10 lt 0 lc rgb \"#808080\"");
         tp.append("set border 3 linestyle 10");
         tp.append("set xtics 4 tc rgb \"#113577\" nomirror rotate by -45");
-        tp.append("set ytics 10000 tc rgb \"#113577\" nomirror");
+        if (both) tp.append("set ytics 50000 tc rgb \"#113577\" nomirror");
+        else tp.append("set ytics 10000 tc rgb \"#113577\" nomirror");
         tp.append("set tics front out");
         tp.append("set style line 11 lt 3 lc rgb \"#99bbf9\" lw 0.5");
         tp.append("set style fill solid 0.9 border");
@@ -1132,11 +1149,11 @@ public class Gnu_Scripts
 	
 	    int c = 1; // create the labels for the x-axis
         String xLabel =""; // create the labels for the x-axis
-	    for (int j=0; j<3; j++)
+	    for (int j=0; j<nChannels; j++)
 	        {
 	        for (int i=0; i<nFiles; i++)
 	            {
-	            if (j==2 && i==(nFiles-1)) xLabel += "\""+xTitle[i]+"\" "+c;
+	            if (j==(nChannels-1) && i==(nFiles-1)) xLabel += "\""+xTitle[i]+"\" "+c;
 	            else xLabel += "\""+xTitle[i]+"\" "+c+", ";
 	            c++;
 	            }
@@ -1233,11 +1250,11 @@ public class Gnu_Scripts
 
 	    int c = 1; // create the labels for the x-axis
         String xLabel =""; // create the labels for the x-axis
-	    for (int j=0; j<3; j++)
+	    for (int j=0; j<nChannels; j++)
 	        {
 	        for (int i=0; i<nFiles; i++)
 	            {
-	            if (j==2 && i==(nFiles-1)) xLabel += "\""+xTitle[i]+"\" "+c;
+	            if (j==(nChannels-1) && i==(nFiles-1)) xLabel += "\""+xTitle[i]+"\" "+c;
 	            else xLabel += "\""+xTitle[i]+"\" "+c+", ";
 	            c++;
 	            }

@@ -291,6 +291,7 @@ public class Ratio_Analysis implements PlugIn
         	IJ.error("Number of lines in the file has to be even for calculation of fingerprints.");
         	return false;
     		}
+//        double[] data = {-0.166554528, 1, -0.024319011, 1, 0.069004218, 1};
         
         double[] ranks = generateBins();
         double ratio = 0; // the ratio
@@ -303,8 +304,9 @@ public class Ratio_Analysis implements PlugIn
         // Calculate ratio values from medians           
         for (int i=0; i<data.length; i+=2)  
             {
-            ratio = (data[i+1]-data[i])/(Math.abs(data[i+1])+Math.abs(data[i])); // (b-a) / (b+a)
-            for (int j=1; j<ranks.length; j++) // find the corresponding bin
+            ratio = (Math.abs(data[i+1])-Math.abs(data[i]))/(Math.abs(data[i+1])+Math.abs(data[i])); // (b-a) / (b+a)
+//        	ratio = data[i];
+        	for (int j=1; j<ranks.length; j++) // find the corresponding bin
             	{
                 if (ratio <= ranks[j]) // bin found
             		{
@@ -508,7 +510,6 @@ public class Ratio_Analysis implements PlugIn
                 rt.addValue("Med", data[2][i]);    
                 rt.addValue("Q3", data[3][i]);    
                 rt.addValue("Max", data[4][i]);    
-                rt.addValue("Mean", data[5][i]);    
                 }
             try
                 {
