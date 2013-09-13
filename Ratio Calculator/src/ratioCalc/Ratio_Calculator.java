@@ -410,7 +410,7 @@ public class Ratio_Calculator implements PlugIn
         int slices = imp_in[0].getStackSize();
         int size = width*height;
 
-        FloatProcessor[] fp = new FloatProcessor[3]; // for historical reasons, the input image data is handled has float.                 
+        FloatProcessor[] fp = new FloatProcessor[3]; // for historical reasons, the input image data is handled as float.                 
         float[][] pixel = new float[3][size]; // image 1, image 2, mask
         int x = 0, y = 0; // position within image
         float[] value = new float[3]; // pixel values

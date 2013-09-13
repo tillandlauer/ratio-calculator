@@ -171,9 +171,9 @@ public class Ratio_Statistics
     
     public static double getSEMed(int[] data) // get standard error of the median. Used for calculating histogram in createFile().
         {
-        // standard error of the median according to: Lothar Sachs, Angewandte Statistik, 11. Auflage 2003, S. 160. s = (a-b) / 3.4641; a = (n/2 + sqrt(3n)/n) th observation, b = (n/2 - sqrt(3n)/n) th observation, rounded up to the next number. 
-        double a = (data.length/2.0d + Math.sqrt(3.0d*data.length)/data.length);
-        double b = (data.length/2.0d - Math.sqrt(3.0d*data.length)/data.length);
+        // standard error of the median according to: Lothar Sachs, Angewandte Statistik, 11. Auflage 2003, S. 160. s = (a-b) / 3.4641; a = (n/2 + sqrt(3n)/2) th observation, b = (n/2 - sqrt(3n)/2) th observation, rounded up to the next number. 
+        double a = (data.length/2.0d + Math.sqrt(3.0d*data.length)/2);
+        double b = (data.length/2.0d - Math.sqrt(3.0d*data.length)/2);
         double sem = Math.abs((data[(int)Math.ceil(a)] - data[(int)Math.ceil(b)]) / 3.4641d);
 		return sem;
         }
@@ -181,9 +181,9 @@ public class Ratio_Statistics
 
     public static double getSEMed(double[] data)  // get standard error of the median. Used for calculating statistics in createFile().
         {
-        // standard error of the median according to: Lothar Sachs, Angewandte Statistik, 11. Auflage 2003, S. 160. s = (a-b) / 3.4641; a = (n/2 + sqrt(3n)/n) th observation, b = (n/2 - sqrt(3n)/n) th observation, rounded up to the next number. 
-        double a = (data.length/2.0d + Math.sqrt(3.0d*data.length)/data.length);
-        double b = (data.length/2.0d - Math.sqrt(3.0d*data.length)/data.length);
+        // standard error of the median according to: Lothar Sachs, Angewandte Statistik, 11. Auflage 2003, S. 160. s = (a-b) / 3.4641; a = (n/2 + sqrt(3n)/2) th observation, b = (n/2 - sqrt(3n)/2) th observation, rounded up to the next number. 
+        double a = (data.length/2.0d + Math.sqrt(3.0d*data.length)/2);
+        double b = (data.length/2.0d - Math.sqrt(3.0d*data.length)/2);
         double sem = Math.abs((data[(int)Math.ceil(a)] - data[(int)Math.ceil(b)]) / 3.4641d);
 		return sem;
         }

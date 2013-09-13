@@ -44,7 +44,7 @@ import ij.process.StackConverter;
 // Workaround for single-slice images (no stacks) 
 //
 // v1.12a - final version used for ratio analysis
-// Minor adaptations and debugging 
+// Minor adaptations and debugging
 //
 // _____________________________________________________________________________________________________________
 

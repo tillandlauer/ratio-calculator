@@ -34,7 +34,7 @@ import java.util.ArrayList;
 //
 // Uncertainties for medians:
 // Median Absolute Deviation    = The median of the differences of the individual values to the median              
-// Standard Error of the Median = s = (a-b) / 3.4641; a = (n/2 + sqrt(3n)/n) th observation, b = (n/2 - sqrt(3n)/n) th observation, rounded up to the next number 
+// Standard Error of the Median = s = (a-b) / 3.4641; a = (n/2 + sqrt(3n)/2) th observation, b = (n/2 - sqrt(3n)/2) th observation, rounded up to the next number 
 // Source: Lothar Sachs, Angewandte Statistik, 11. Auflage 2003, S. 160.
 //
 // Error propagation according to: Lothar Papula, Mathematik für Ingenieure und Naturwissenschaftler Band 3, 5. Auflage 2008, Kapitel 4.3, Seite 678ff: Gaußsches Fehlerfortpflanzungsgesetz
