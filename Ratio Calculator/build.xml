@@ -13,6 +13,6 @@
  	 		</manifest>
  		</jar>
 		<copy file="Ratio_Calculator.jar" toDir="../../../../../../Applications/ImageJ/plugins/" />
-		<copy file="Ratio Calculator.txt" toDir="../../../../../../Applications/ImageJ/macros/toolsets/" />
+		<copy file="Ratio Calculator Macro.txt" toDir="../../../../../../Applications/ImageJ/macros/toolsets/" />
 	</target>
 </project>
