@@ -9,12 +9,9 @@ import ij.gui.NewImage;
 import ij.io.DirectoryChooser;
 import ij.io.FileSaver;
 import ij.measure.ResultsTable;
-import ij.plugin.Duplicator;
 import ij.plugin.PlugIn;
 import ij.process.FloatProcessor;
-import ij.process.ImageConverter;
 import ij.process.ImageProcessor;
-import ij.process.ImageStatistics;
 import ij.process.StackConverter;
 import ij.text.TextPanel;
 import ij.text.TextWindow;
@@ -24,12 +21,12 @@ import java.util.ArrayList;
 /**
  * Calculates ratios between all pixels of two image stacks.
  * @author Till Andlauer (till@andlauer.net)
- * @version 1.31 - 13-08-21
+ * @version 1.33 - 15-05-17
  */
 public class Ratio_Calculator implements PlugIn
     {
 	/** Title for dialogs and error messages. */
-    private String title = "Ratio Calculator v1.31"; // title for dialogs and error messages
+    private String title = "Ratio Calculator v1.33"; // title for dialogs and error messages
 	/** Error message when out of memory */
     private String memoryError = "Out of memory...";
 	/** Error message when file couldn't be saved */
@@ -75,8 +72,6 @@ public class Ratio_Calculator implements PlugIn
     private boolean image = true; // Generated output image.
     /** Show the LUT for the ratio image; set in <code>chooseImages</code> */
     private static boolean displayLUT = false; // Show the LUT.
-    /** Calculate scatter plot; set in <code>chooseImages</code> */
-    private boolean scatter = true; // Calculate scatter plot.
     /** Calculate histogram; set in <code>chooseImages</code> */
     private boolean histo = true; // Calculated histogram.
     /** Calculate statistics; set in <code>chooseImages</code> */
@@ -85,87 +80,41 @@ public class Ratio_Calculator implements PlugIn
     * <br>Useful with potentially oversaturated data 
     */
     private boolean stripStats = true; // Calculate statistics without the value 255.
-    /** Use mask for statistics, histogram & scatter plot; set in <code>chooseImages</code> 
+    /** Use mask for statistics & histogram; set in <code>chooseImages</code> 
     * <br><i>It is always recommended to use a mask</i> 
     */
-    private boolean mask = true; // Mask should be used for statistics, histogram, scatter plot.
-    /** Use original values for histogram/statistics; set in <code>chooseImages</code>
-    * @see normHisto
-    */
-    private boolean standHisto = true; // Show histogram/statistics with original values
-    /** Use values normalized by statistical frequency for histogram/statistics; set in <code>chooseImages</code> 
-    * @see standHisto
-    */
-    private boolean normHisto = true; // Show histogram/statistics with values normalized by statistical frequency
-    /** Show original, unbinned histogram data; set in <code>chooseImages</code> */
+    private boolean mask = true; // Mask should be used for statistics & histogram.
+    /** Show original unbinned results; set in <code>chooseImages</code> */
     private boolean showUnbinned = true; // Show original, unbinned histogram data
-    /** Scale scatter plot to the max value; set in <code>chooseImages</code>
-    * <br>Only relevant if the max frequency exceeds the max 32 bit value; otherwise higher values are cut off
-    * <br>Usually ok when <code>false</code>
-    * @see scatterScale
-    */
-    private boolean maxScatter = false; // Scale scatter plot to max frequency
-    /** Scale scatter plot to total amount of data; set in <code>chooseImages</code>
-    * <br><code>true</code> is recommended if several plots shall be compared
-    * @see maxScatter
-    * @see drawMax 
-    * @see defaultScale 
-    * @see scaleOption
-    */
-    private boolean scatterScale = true; // Scale scatter plot to total amount of data (like scaleOption = 3 for histograms)
-    /** Show the statistical ratio/rank distribution; set in <code>chooseImages</code> */
-    private boolean showRanks = false; // Show statistical rank distribution
     /** The use uniform ratio <code>(a-b)/(a+b)</code> instead of <code>a/b</code>; set in <code>chooseImages</code> 
     * <br>Usually unnecessary because ranks transform also the <code>a/b</code> ratio to a uniform distribution
     */
     private boolean useUniRatio = false; // (a-b)/(a+b)
-    /** Generate statistics files in the old format; set in <code>chooseImages</code> 
-    * <br>Option exists only for compatibility. Should be <code>false</code>. 
-    */
-    private boolean oldFormat = false; // Use the old format for statistics files.
     /** Calculate ratio image separately to save memory; set in <code>chooseImages</code> */
     private boolean extraRatio = false; // Calculate ratio image separately
     /** Show parameters in the log window; set in <code>chooseImages</code> */
     private boolean logInfo = true; // Show parameters in the log window
-    /** Number of histogram bins; set in <code>chooseImages</code>; default: <code>256</code> */
+    /** Number of histogram bins; set in <code>chooseImages</code>; default: <code>512</code> */
     private int histoBins = 128; // number of bins for the histogram
-    /** Scaling factor for histograms (for scaleOptions <code>0</code> & <code>3</code>); set in <code>chooseImages</code>
+    /** Scaling factor for histograms; set in <code>chooseImages</code>
     * <br><code>scaling factor * (frequency / total amount of data)</code>
-    * <br>default for <code>scaleOption 3</code>: <code>10000000</code>
-    * @see scaleOption 
+    * <br>default: <code>10000000</code>
+    * @see scaleHisto
     * @see drawMax 
     */
-    private int defaultScale = 10000000; // Default scaling factor for histograms (options 1/4)   
+    private int defaultScale = 10000000; // Default scaling factor for histograms  
     /** Height of histogram plots; set in <code>chooseImages</code> 
-    * <br>(for <code>scaleOption 3</code>; max displayed frequency, not height in pixels)
+    * <br>max displayed frequency, not height in pixels)
     * <br>default: <code>300000</code>
-    * @see scaleOption 
+    * @see scaleHisto 
     * @see defaultScale 
-    * @see normValue 
     */
-    private int drawMax = 300000; // Default image height for histograms (option 4, normalize)
-    /** Height of normalized histogram plots relative to other histograms 
+    private int drawMax = 300000; // Default image height for histograms
+    /** Height of normalized histogram plots is normalized to total amount of pixels (and thus comparable to other histograms) 
     * @see drawMax 
-    */
-    private double normValue = 10.0d; // drawMax is divided by this value for normalized histograms
-    /** Multiplication factor for scatter plot scaling; set in <code>chooseImages</code> 
-    * <br>Only used if <code>scatterScale=true</code>
-    * <br><code>scatterMulti * defaultScale</code>
-    * <br>default: <code>20</code>
-    * @see scatterScale 
     * @see defaultScale 
     */
-    private double scatterMulti = 20.0d; // Default multiplication factor during scatter plot scaling
-    /** How to scale histograms; set in <code>chooseImages</code> 
-    * <br><code>0</code> = Scale the max value of data & image to a fixed value (<code>defaultScale</code>)  
-    * <br><code>1</code> = Don't change the data; for display only scale the max value to the height of the image window  
-    * <br><code>2</code> = Don't change the data; scale the height of the image window to the max value of the data  
-    * <br><code>3</code> = Normalize the data by the total amount of data points; specify the max value displayed in the plot (<code>defaultScale</code>, <code>drawMax</code>)  
-    * <br><code>scaleOption 3</code> is recommended if several plots shall be compared
- 	* @see defaultScale
- 	* @see drawMax
-    */
-    private int scaleOption = 3; // How to scale the histogram. 0 = Factor, 1 = Image, 2 = No, 3 = Normalize
+    private boolean scaleHisto = true; // Normalize histogram by total amount of pixels
 
 	/**
 	 * Runs the analysis
@@ -184,12 +133,6 @@ public class Ratio_Calculator implements PlugIn
         
         double start_time = System.currentTimeMillis();
         IJ.showStatus("Beginning calculation...");
-
-        if (showRanks) // ignore the input images. Show the statistical rank distribution instead.
-            {
-            showRankDist();
-            return;
-            }
 
         ImagePlus img_ratio = null;
         if (image || statistics || histo) 
@@ -211,23 +154,6 @@ public class Ratio_Calculator implements PlugIn
                 img_ratio = calcRatio(img);
                 if (img_ratio == null) return;
                 }
-            }
-
-        ImagePlus img_scatter = null;
-        if (scatter)
-            {
-            IJ.showStatus("Generating scatter plot...");
-            img_scatter = generate_Scatter(img);
-            if (img_scatter == null) return;
-
-            // find the max value, apply LUT and scale it
-            ImageStatistics iSt = new ImageStatistics();
-            iSt = ImageStatistics.getStatistics(img_scatter.getProcessor(), 16, null); // Get raw MIN_MAX
-            WindowManager.setTempCurrentImage(img_scatter); 
-            IJ.run("Fire"); // change the lookup table
-            img_scatter.getProcessor().setMinAndMax(0,iSt.max);
-
-            img_scatter.show();
             }
 
         if (image) // show the ratio image
@@ -258,12 +184,6 @@ public class Ratio_Calculator implements PlugIn
             	fs = new FileSaver(img_ratio);
                 fs.saveAsTiffStack(saveDir+img_ratio.getTitle()+".tif");
                 img_ratio.close();
-                }
-            if (scatter)
-                {
-            	fs = new FileSaver(img_scatter);
-                fs.saveAsTiff(saveDir+img_scatter.getTitle()+".tif");
-                img_scatter.close();
                 }
             }
 
@@ -297,13 +217,11 @@ public class Ratio_Calculator implements PlugIn
 		if (rc.error) return false;
 		else
 			{
-			String[] ints = {"bitdepth", "histoBins", "defaultScale", "drawMax", "scaleOption"};
-			String[] doubles = {"normValue", "scatterMulti"};
+			String[] ints = {"bitdepth", "histoBins", "defaultScale", "drawMax"};
 			String[] strings = {"prefix"};
-			String[] booleans = {"keepFiles", "saveFiles", "image", "displayLUT", "scatter", "histo", "statistics", "stripStats", "mask", "standHisto", "normHisto", "showUnbinned", "maxScatter", "scatterScale", "showRanks", "useUniRatio", "extraRatio", "logInfo"};
+			String[] booleans = {"keepFiles", "saveFiles", "image", "displayLUT", "histo", "statistics", "stripStats", "mask", "scaleHisto", "showUnbinned", "useUniRatio", "extraRatio", "logInfo"};
 
 			int cInt = 0;
-			double cDouble = 0.0d;
 			String cString = "";
 			boolean cBool = false;
 			
@@ -319,17 +237,7 @@ public class Ratio_Calculator implements PlugIn
 	    	cInt = rc.getInt(ints[3]);
 	    	if (!rc.error) drawMax=cInt;
 	    	else rc.error=false;
-	    	cInt = rc.getInt(ints[4]);
-	    	if (!rc.error) scaleOption=cInt;
-	    	else rc.error=false;
 
-	    	cDouble = rc.getDouble(doubles[0]);
-	    	if (!rc.error) normValue=cDouble;
-	    	else rc.error=false;
-	    	cDouble = rc.getDouble(doubles[1]);
-	    	if (!rc.error) scatterMulti=cDouble;
-	    	else rc.error=false;
-	    	
 	    	cString = rc.getValue(strings[0]);
 	    	if (!rc.error) prefix=cString;
 	    	else rc.error=false;
@@ -347,45 +255,30 @@ public class Ratio_Calculator implements PlugIn
 	    	if (!rc.error) displayLUT=cBool;
 	    	else rc.error=false;
 	    	cBool = rc.getBoolean(booleans[4]);
-	    	if (!rc.error) scatter=cBool;
-	    	else rc.error=false;
-	    	cBool = rc.getBoolean(booleans[5]);
 	    	if (!rc.error) histo=cBool;
 	    	else rc.error=false;
-	    	cBool = rc.getBoolean(booleans[6]);
+	    	cBool = rc.getBoolean(booleans[5]);
 	    	if (!rc.error) statistics=cBool;
 	    	else rc.error=false;
-	    	cBool = rc.getBoolean(booleans[7]);
+	    	cBool = rc.getBoolean(booleans[6]);
 	    	if (!rc.error) stripStats=cBool;
 	    	else rc.error=false;
-	    	cBool = rc.getBoolean(booleans[8]);
+	    	cBool = rc.getBoolean(booleans[7]);
 	    	if (!rc.error) mask=cBool;
 	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[8]);
+	    	if (!rc.error) scaleHisto=cBool;
+	    	else rc.error=false;
 	    	cBool = rc.getBoolean(booleans[9]);
-	    	if (!rc.error) standHisto=cBool;
-	    	else rc.error=false;
-	    	cBool = rc.getBoolean(booleans[10]);
-	    	if (!rc.error) normHisto=cBool;
-	    	else rc.error=false;
-	    	cBool = rc.getBoolean(booleans[11]);
 	    	if (!rc.error) showUnbinned=cBool;
 	    	else rc.error=false;
-	    	cBool = rc.getBoolean(booleans[12]);
-	    	if (!rc.error) maxScatter=cBool;
-	    	else rc.error=false;
-	    	cBool = rc.getBoolean(booleans[13]);
-	    	if (!rc.error) scatterScale=cBool;
-	    	else rc.error=false;
-	    	cBool = rc.getBoolean(booleans[14]);
-	    	if (!rc.error) showRanks=cBool;
-	    	else rc.error=false;
-	    	cBool = rc.getBoolean(booleans[15]);
+	    	cBool = rc.getBoolean(booleans[10]);
 	    	if (!rc.error) useUniRatio=cBool;
 	    	else rc.error=false;
-	    	cBool = rc.getBoolean(booleans[16]);
+	    	cBool = rc.getBoolean(booleans[11]);
 	    	if (!rc.error) extraRatio=cBool;
 	    	else rc.error=false;
-	    	cBool = rc.getBoolean(booleans[17]);
+	    	cBool = rc.getBoolean(booleans[12]);
 	    	if (!rc.error) logInfo=cBool;
 	    	else rc.error=false;
 			}
@@ -415,33 +308,8 @@ public class Ratio_Calculator implements PlugIn
         int x = 0, y = 0; // position within image
         float[] value = new float[3]; // pixel values
         
-        stacks[3] = null;
+        stacks[3] = null; // mask
         if (mask) stacks[3] = imp_in[2].getStack();       
-
-        // arrays for statistics and histograms
-        double[] histoDataS = new double[1]; // original data
-        double[] histoDataN = new double[1]; // normalized data (by frequency)
-        double[][] ratioData = new double[1][1]; // combination of histogram frequencies and actual ratios for statistics
-
-         // histogram settings
-        int histoX = 1024;
-        int histoY = 512;
-
-        if (histo || statistics)
-            {
-            if (useUniRatio) // (a-b)/(a+b)
-                {
-                if (standHisto) histoDataS = new double[maxPossibleValue+2];
-                if (normHisto) histoDataN = new double[maxPossibleValue+2];
-                if (statistics) ratioData = new double[maxPossibleValue+2][2];
-                }
-            else // a/b
-                {
-                if (standHisto) histoDataS = new double[maxPossibleValue];
-                if (normHisto) histoDataN = new double[maxPossibleValue];
-                if (statistics) ratioData = new double[maxPossibleValue][2];
-                }
-            }
  
         // variables for processing the output (image)
         ImagePlus imp_out = null;
@@ -461,12 +329,34 @@ public class Ratio_Calculator implements PlugIn
 
         // variables for calculating the ratio
         int ratio = 0;
-        int counts = 0;
 
         //-- start actually doing stuff --//
         // create the rank matrix
         double[][][] ranks = rankGenerator(); // 0 = original rank, 1 = final rank, 2 = counter, 3 = ratio                  
 
+        // array for statistics and histogram
+        double[][] ratioData = new double[1][1]; // combination of histogram frequencies and actual ratios
+        if (histo || statistics)
+            {
+            if (useUniRatio) // (a-b)/(a+b)
+                {
+                ratioData = new double[maxPossibleValue+2][2];
+                }
+            else // a/b (default)
+                {
+                ratioData = new double[maxPossibleValue][2];
+                }
+ 
+            for (int i=0; i<256; i++) // generate list of ratios for output files
+            	{
+                for (int j=0; j<256; j++)
+                	{
+                    ratio = ((int)ranks[i][j][1])-1; // '-1' because the value is from now on used as an index for arrays. arrays start at 0, thus x[n-1] to address the value at position n.
+                    ratioData[ratio][1] = ranks[i][j][3]; // add the real ratio x/y to the array                    
+                	}
+            	}
+            }
+        
         // calculate the ratio
         IJ.showStatus("Calculating ratio...");
         for (int i=1; i<=slices; i++)
@@ -488,7 +378,7 @@ public class Ratio_Calculator implements PlugIn
                 value[1] = pixel[1][j]; // get the current pixel value of image 2                        
                 if (mask) value[2] = pixel[2][j]; 
 
-                if (image)
+                if (image) // just for displaying an image, not used for statistics
                     {
                     ratio = (int)ranks[Math.round(value[0])][Math.round(value[1])][1]; // get the uniformly distributed ratio of these two pixel values (=rank)                     
                     if (mask)
@@ -503,25 +393,20 @@ public class Ratio_Calculator implements PlugIn
                 if (histo || statistics)
                     {
                     ratio = ((int)ranks[Math.round(value[0])][Math.round(value[1])][1])-1; // '-1' because the value is from now on used as an index for arrays. arrays start at 0, thus x[n-1] to address the value at position n.
-                    counts = (int)ranks[Math.round(value[0])][Math.round(value[1])][2]; // needed for normalization and statistics
-
+                    
                     if (!stripStats) // no stripStats = include 255
                         {
                         if (mask)
                             {
                             if (value[2]>threshold) 
                                 {
-                                if (standHisto) histoDataS[ratio]++; // sum the number of times each ratio occurred                   
-                                if (normHisto) histoDataN[ratio] = histoDataN[ratio] + (1.0d/counts); // normalize the numbers by the statistical frequency 
-                                if (statistics && (ratioData[ratio][1]==0)) ratioData[ratio][1] = ranks[Math.round(value[0])][Math.round(value[1])][3]; // add the real ratio x/y to the array (for statistics)                    
+                                ratioData[ratio][0]++; // sum the number of times each ratio occurred
                                 maskCounter++;
                                 }
                             }
                         else // no mask 
                             {
-                            if (standHisto) histoDataS[ratio]++;                      
-                            if (normHisto) histoDataN[ratio] = histoDataN[ratio] + (1.0d/counts);                      
-                            if (statistics && (ratioData[ratio][1]==0)) ratioData[ratio][1] = ranks[Math.round(value[0])][Math.round(value[1])][3];                    
+                            ratioData[ratio][0]++; // sum the number of times each ratio occurred
                             maskCounter++;
                             }
                         }
@@ -538,18 +423,14 @@ public class Ratio_Calculator implements PlugIn
                                     }
                                 else
                                     {
-                                    if (standHisto) histoDataS[ratio]++;                      
-                                    if (normHisto) histoDataN[ratio] = histoDataN[ratio] + (1.0d/counts);                      
+                                    ratioData[ratio][0]++; // sum the number of times each ratio occurred
                                     maskCounter++;
-                                    if (statistics && (ratioData[ratio][1]==0)) ratioData[ratio][1] = ranks[Math.round(value[0])][Math.round(value[1])][3];                    
                                     }
                                 }                      
                             }
                         else // no mask
                             {
-                            if (standHisto) histoDataS[ratio]++;                      
-                            if (normHisto) histoDataN[ratio] = histoDataN[ratio] + (1.0d/counts);                      
-                            if (statistics && (ratioData[ratio][1]==0)) ratioData[ratio][1] = ranks[Math.round(value[0])][Math.round(value[1])][3];                    
+                            ratioData[ratio][0]++; // sum the number of times each ratio occurred
                             maskCounter++;
                             }
                         }
@@ -565,103 +446,70 @@ public class Ratio_Calculator implements PlugIn
             rt = ResultsTable.getResultsTable();        
             rt.reset();
             rt.setPrecision(9);
-            if (standHisto)
+            for (int i=0; i<ratioData.length; i++)
                 {
-                for (int i=0; i<histoDataS.length; i++)
-                    {
-                    rt.incrementCounter();
-                    if (statistics) rt.addValue("ratio",ratioData[i][1]);
-                    rt.addValue("frequency",histoDataS[i]);
-                    }
-                rt.show("Results");
-                if (saveFiles) rioT.saveTable(rt, prefix+"Original Data");                      
-                else IJ.renameResults("Results", prefix+"Original Data"); 
+                rt.incrementCounter();
+                rt.addValue("ratio",ratioData[i][1]);
+                rt.addValue("frequency",ratioData[i][0]);
                 }
-            if (normHisto)
-                {
-                rt.reset();
-                for (int i=0; i<histoDataN.length; i++)
-                    {
-                    rt.incrementCounter();
-                    if (statistics) rt.addValue("ratio",ratioData[i][1]);
-                    rt.addValue("frequency",histoDataN[i]);
-                    }
-                rt.show("Results");
-                if (saveFiles) rioT.saveTable(rt, prefix+"Original Data (normalized)");                      
-                else IJ.renameResults("Results", prefix+"Original Data (normalized)");                      
-                }
+            rt.show("Results");
+            if (saveFiles) rioT.saveTable(rt, prefix+"Unbinned Results");                      
+            else IJ.renameResults("Results", prefix+"Unbinned Results"); 
             }
 
         if (statistics) 
             {
             IJ.showStatus("Calculating statistics...");
             
-            if (standHisto)
-                {
-                for (int i=0; i<ratioData.length; i++)
-                    {
-                    ratioData[i][0] = histoDataS[i];
-                    }
-                rt = calcStats(ratioData);
-                if (saveFiles) rioT.saveTable(rt, prefix+"Statistics");
-                else IJ.renameResults("Results", prefix+"Statistics");                             
-                }
-            if (normHisto)
-                {
-                for (int i=0; i<ratioData.length; i++)
-                    {
-                    ratioData[i][0] = histoDataN[i];
-                    }
-                rt = calcStats(ratioData);
-                if (saveFiles) rioT.saveTable(rt, prefix+"Statistics (normalized)");
-                else IJ.renameResults("Results", prefix+"Statistics (normalized)");                      
-                }
-           ratioData = new double[1][1];
-           }
+            rt = calcStats(ratioData);
+            if (saveFiles) rioT.saveTable(rt, prefix+"Statistics");
+            else IJ.renameResults("Results", prefix+"Statistics");                             
+
+            if (!histo) ratioData = new double[1][1]; // delete array to save memory
+            }
 
         if (histo)
             {
             IJ.showStatus("Generating histogram...");
-            HistoWrapper hw; // Object containing histo image and table
-            Ratio_Statistics rs_histo = new Ratio_Statistics(drawMax, normValue, defaultScale, maxPossibleValue, scaleOption, maskCounter, satCounter, logWindow, prefix, memoryError, title);
+            HistoWrapper hw; // Object containing histogram image and table
+            Ratio_Statistics rs_histo = new Ratio_Statistics(drawMax, defaultScale, maxPossibleValue, scaleHisto, maskCounter, satCounter, logWindow, prefix, memoryError, title);
             FileSaver fs;
             
-            if (standHisto)
-                {
-            	hw = rs_histo.calcHisto(histoDataS, histoX, histoY, histoBins, false, logWindow);
-        		logWindow = rs_histo.logWindow;
-                histoDataS = new double[1];
-                ImagePlus img_histoS = hw.getImage(); 
-                if (img_histoS == null) return null;
-                img_histoS.show();               
-                if (saveFiles)
-                    {
-                    fs = new FileSaver(img_histoS);
-                    fs.saveAsTiff(saveDir+img_histoS.getTitle()+".tif");
-                    img_histoS.close();
-                    rioT.saveTable(hw.getTable(), prefix+"Histogram");
-                    }
-                else IJ.renameResults("Results", prefix+"Histogram");               
-                }
+            int histoX = 1024;
+            int histoY = 512;
+            // Histogram binned by ranks
+        	hw = rs_histo.calcHistoRanks(ratioData, histoX, histoY, histoBins, logWindow);
 
-            if (normHisto)
+        	logWindow = rs_histo.logWindow;
+    		ImagePlus img_histo = hw.getImage(); 
+            if (img_histo == null) return null;
+            img_histo.show();               
+            if (saveFiles)
                 {
-                hw = rs_histo.calcHisto(histoDataN, histoX, histoY, histoBins, true, logWindow);
-        		logWindow = rs_histo.logWindow;
-        		histoDataN = new double[1];
-                ImagePlus img_histoN = hw.getImage();
-                if (img_histoN == null) return null;
-                img_histoN.setTitle(img_histoN.getTitle()+" (normalized)");                      
-                img_histoN.show();
-                if (saveFiles)
-                    {
-                    fs = new FileSaver(img_histoN);
-                    fs.saveAsTiff(saveDir+img_histoN.getTitle()+".tif");
-                    img_histoN.close();
-                    rioT.saveTable(hw.getTable(), prefix+"Histogram (normalized)");
-                    }
-                else IJ.renameResults("Results", prefix+"Histogram (normalized)");                      
+                fs = new FileSaver(img_histo);
+                fs.saveAsTiff(saveDir+img_histo.getTitle()+".tif");
+                img_histo.close();
+                rioT.saveTable(hw.getTable(), prefix+"Histogram (ranks)");
                 }
+            else IJ.renameResults("Results", prefix+"Histogram (ranks)");
+            
+            // Histogram binned by ratios
+        	hw = rs_histo.calcHistoRatios(ratioData, histoX, histoY, histoBins, logWindow);
+
+        	ratioData = new double[1][1]; // delete array to save memory
+        	logWindow = rs_histo.logWindow;
+    		img_histo = hw.getImage(); 
+            if (img_histo == null) return null;
+            img_histo.show();               
+            if (saveFiles)
+                {
+                fs = new FileSaver(img_histo);
+                fs.saveAsTiff(saveDir+img_histo.getTitle()+".tif");
+                img_histo.close();
+                rioT.saveTable(hw.getTable(), prefix+"Histogram (ratios)");
+                }
+            else IJ.renameResults("Results", prefix+"Histogram (ratios)");
+
             }
 
         if (statistics || histo) IJ.log("Number of pixels in mask: "+maskCounter);
@@ -746,209 +594,40 @@ public class Ratio_Calculator implements PlugIn
         ResultsTable rt = ResultsTable.getResultsTable();        
         rt.reset();
         rt.setPrecision(9);
-        if (oldFormat) // only for compatibility    
-            {
-            rt.incrementCounter();
-            if (value[0]>1) rt.addValue("Min", 1+(1-invValue[0]));
-            else rt.addValue("Min", value[0]);    
-            if (value[1]>1) rt.addValue("Quartile 1", 1+(1-invValue[1]));
-            else rt.addValue("Quartile 1", value[1]);    
-            if (value[2]>1) rt.addValue("Median", 1+(1-invValue[2]));
-            else rt.addValue("Median", value[2]);    
-            if (value[3]>1) rt.addValue("Quartile 3", 1+(1-invValue[3]));
-            else rt.addValue("Quartile 3", value[3]);    
-            if (value[4]>1) rt.addValue("Max", 1+(1-invValue[4]));
-            else rt.addValue("Max", value[4]);    
-            rt.incrementCounter();
-            rt.addValue("Min", value[0]);    
-            rt.addValue("Quartile 1", value[1]);    
-            rt.addValue("Median", value[2]);    
-            rt.addValue("Quartile 3", value[3]);    
-            rt.addValue("Max", value[4]);    
-            rt.incrementCounter();
-            rt.addValue("Min", invValue[0]);    
-            rt.addValue("Quartile 1", invValue[1]);    
-            rt.addValue("Median", invValue[2]);    
-            rt.addValue("Quartile 3", invValue[3]);    
-            rt.addValue("Max", invValue[4]);    
-            }
-        else
-            {
-            rt.incrementCounter();
-            rt.addValue("Min", value[0]);    
-            rt.addValue("Quartile 1", value[1]);    
-            rt.addValue("Median", value[2]);    
-            rt.addValue("Quartile 3", value[3]);    
-            rt.addValue("Max", value[4]);    
-            rt.incrementCounter();
-            if (value[0]>1) rt.addValue("Min", 1+(1-invValue[0]));
-            else rt.addValue("Min", value[0]);    
-            if (value[1]>1) rt.addValue("Quartile 1", 1+(1-invValue[1]));
-            else rt.addValue("Quartile 1", value[1]);    
-            if (value[2]>1) rt.addValue("Median", 1+(1-invValue[2]));
-            else rt.addValue("Median", value[2]);    
-            if (value[3]>1) rt.addValue("Quartile 3", 1+(1-invValue[3]));
-            else rt.addValue("Quartile 3", value[3]);    
-            if (value[4]>1) rt.addValue("Max", 1+(1-invValue[4]));
-            else rt.addValue("Max", value[4]);    
-            rt.incrementCounter();
-            rt.addValue("Min", invValue[0]);    
-            rt.addValue("Quartile 1", invValue[1]);    
-            rt.addValue("Median", invValue[2]);    
-            rt.addValue("Quartile 3", invValue[3]);    
-            rt.addValue("Max", invValue[4]);    
-            }
+        rt.incrementCounter();
+        rt.addValue("Min", value[0]);    
+        rt.addValue("Quartile 1", value[1]);    
+        rt.addValue("Median", value[2]);    
+        rt.addValue("Quartile 3", value[3]);    
+        rt.addValue("Max", value[4]);    
+        rt.incrementCounter();
+        if (value[0]>1) rt.addValue("Min", 1+(1-invValue[0]));
+        else rt.addValue("Min", value[0]);    
+        if (value[1]>1) rt.addValue("Quartile 1", 1+(1-invValue[1]));
+        else rt.addValue("Quartile 1", value[1]);    
+        if (value[2]>1) rt.addValue("Median", 1+(1-invValue[2]));
+        else rt.addValue("Median", value[2]);    
+        if (value[3]>1) rt.addValue("Quartile 3", 1+(1-invValue[3]));
+        else rt.addValue("Quartile 3", value[3]);    
+        if (value[4]>1) rt.addValue("Max", 1+(1-invValue[4]));
+        else rt.addValue("Max", value[4]);    
+        rt.incrementCounter();
+        rt.addValue("Min", invValue[0]);    
+        rt.addValue("Quartile 1", invValue[1]);    
+        rt.addValue("Median", invValue[2]);    
+        rt.addValue("Quartile 3", invValue[3]);    
+        rt.addValue("Max", invValue[4]);    
         rt.show("Results");
         
         return rt;
         } // end of calcStats
 
 
-   /**
-    * Generate_ scatter.
-    *
-    * @param imp_in the imp_in
-    * @return the image plus
-    */
-   public ImagePlus generate_Scatter(ImagePlus[] imp_in) // Generate the scatter plot. 
-        {
-        ImageStack[] stacks = new ImageStack[3];
-        stacks[0] = imp_in[0].getStack();
-        stacks[1] = imp_in[1].getStack();
-        int width  = imp_in[0].getWidth(); 
-        int height = imp_in[0].getHeight();
-        int slices = imp_in[0].getStackSize();
-        int size = width*height;
-
-        byte[][] pixel = new byte[2][size]; // image 1 and 2
-        ImageProcessor[] ip = new ImageProcessor[2];
-        int x, y = 0; // position
-        long maxValue = 4294967295L; // max float image pixel value
-        boolean overflow = false; // values were cut off
- 
-        // variables for the mask
-        int valueMask = 0; // pixel value of the mask
-        ImageProcessor ip_mask = null;                    
-        byte[] pixels_mask = new byte[size];
-        stacks[2] = null;
-        if (mask) stacks[2] = imp_in[2].getStack();      
-
-        // variables for the output image
-        String imp_out_title = prefix+"Scatter plot";
-        ImagePlus imp_out = NewImage.createFloatImage(imp_out_title, 256, 256, 1, 1);
-        if (imp_out == null)
-            {
-            IJ.error(title, memoryError);
-            return null;
-            }
-        WindowManager.checkForDuplicateName = true; // add a number to the title if name already exists  
-        ImageProcessor ip_out = imp_out.getProcessor();
-
-        double[][] ratioCount = new double[256][256]; // counter for ratio frequencies
-        
-        // generate the scatter plot      
-        // maxScatter: re-scales the plot if a single ratio has a frequency > maxValue. This is hardly ever the case in normal applications.
-        // if maxScatter is false, overflowing frequencies are cut off at maxValue.
-        for (int i=1; i<=slices; i++) // cycle through the stack
-            {                
-            ip[0] = stacks[0].getProcessor(i); 
-            ip[1] = stacks[1].getProcessor(i);
-            pixel[0] = (byte[])ip[0].getPixels(); 
-            pixel[1] = (byte[])ip[1].getPixels();
-            if (mask)
-                {
-                ip_mask = stacks[2].getProcessor(i);
-                pixels_mask = (byte[])ip_mask.getPixels();
-                }
-            
-            for (int j=0; j<size; j++) // go through all pixels of each slice
-                {
-                x = pixel[0][j]&0xff; // convert byte to int
-                y = pixel[1][j]&0xff;                      
-
-                if (mask)
-                    {
-                    valueMask = pixels_mask[j]&0xff;
-                    if (valueMask>threshold) 
-                        {
-                        if (maxScatter) ratioCount[x][y]++;
-                        else if (ratioCount[x][y]!=maxValue) ratioCount[x][y]++; // don't increase counter further if max. possible frequency has been reached. 
-                        else overflow = true; // values will be cut off
-                        }
-                    }
-                else
-                    { 
-                    if (maxScatter) ratioCount[x][y]++;
-                    else if (ratioCount[x][y]!=maxValue) ratioCount[x][y]++; 
-                    else overflow = true; // values will be cut off
-                    }
-                }
-            }
-
-        if (scatterScale) // normalize plot by total amount of data
-            {
-            overflow = false; // reset cut-off indicator; condition gets reevaluated below
-            long pixels = size*slices; // total amount of data
-            double maxScale = (double)defaultScale * scatterMulti; // scale by this factor after normalization to get values back >1
-
-            for (int i=0; i<256; i++)
-                {  
-                for (int j=0; j<256; j++)
-                    {  
-                    ratioCount[i][j] = maxScale * (ratioCount[i][j] / pixels); // normalize and scale the data
-                    if (ratioCount[i][j] > maxValue) overflow = true; // values will be cut off
-                    }
-                }  
-            }
-
-        if (overflow)
-            {
-            IJ.log("Caution: Scatter plot was cut off, consider to apply scaling.");
-            logWindow = true;
-            }
-
-        double scaleFactor = 1; // adjustment of max. value
-        if (maxScatter)
-            {
-            double max = ratioCount[0][0]; // find the maximum frequency (for scaling)
-            for (int i=0; i<256; i++)
-                {  
-                for (int j=0; j<256; j++)
-                    {  
-                    if (ratioCount[i][j] > max) max = ratioCount[i][j];
-                    }
-                }  
-
-            if ((int)Math.round(max) > maxValue) // if max. frequency is higher than the max. possible frequency (due to image type) 
-                {
-                scaleFactor = max / maxValue; // maxValue = max. possible value; only scale if max. possible value would have been exceeded
-                IJ.log("Scatter plot was scaled, max. frequency: "+IJ.d2s(max,0)+".");
-                logWindow = true;
-                }
-            }
-
-        // create the output image    
-        for (int i=0; i<256; i++) // write values to image
-            {  
-            for (int j=0; j<256; j++)
-                {  
-                if (maxScatter) ratioCount[i][j] = ratioCount[i][j] / scaleFactor; // scale to max. possible value
-                ip_out.putPixelValue(i, j, ratioCount[i][j]); // write the frequency as a pixel
-                }
-            }  
-
-        ip_out.flipVertical();
-        return imp_out;
-        }
-
-
     /**
-     * Show rank dist.
+     * Show rank distribution
      */
     public void showRankDist() // visualizes the rank matrix
         {
-        double[] histoDataS = new double[1];
-        double[] histoDataN = new double[1];
         double[][] ratioData = new double[1][1];
         int histoX = 1024;
         int histoY = 512;
@@ -957,19 +636,14 @@ public class Ratio_Calculator implements PlugIn
         ResultsTable rt = ResultsTable.getResultsTable();        
         rt.reset();
         rt.setPrecision(9);
-        if (scatter) image=true;
 
         if (useUniRatio) // (a-b)/(a+b)
             {
-            if (standHisto) histoDataS = new double[maxPossibleValue+2];
-            if (normHisto) histoDataN = new double[maxPossibleValue+2];
-            if (statistics) ratioData = new double[maxPossibleValue+2][2];
+            ratioData = new double[maxPossibleValue+2][2];
             }
-        else // a/b
+        else // a/b (default)
             {
-            if (standHisto) histoDataS = new double[maxPossibleValue];
-            if (normHisto) histoDataN = new double[maxPossibleValue];
-            if (statistics) ratioData = new double[maxPossibleValue][2];
+            ratioData = new double[maxPossibleValue][2];
             }
 
         double[][][] ranks = rankGenerator(); // 0 = original rank, 1 = final rank, 2 = counter, 3 = ratio                  
@@ -997,8 +671,7 @@ public class Ratio_Calculator implements PlugIn
                 rt.addValue("frequency",counts);                    
 
                 ratio = ((int)ranks[i][j][1])-1; // '-1' because the index of arrays starts at '0'.
-                if (standHisto) histoDataS[ratio]++;                      
-                if (normHisto) histoDataN[ratio] = histoDataN[ratio] + (1.0d/counts); // normalized by frequency  
+                ratioData[ratio][0]++;                      
                 if (statistics && (ratioData[ratio][1]==0)) ratioData[ratio][1] = ranks[i][j][3]; // counts needed for statistics                   
                 if (image) ip.putPixelValue(i, j, ((int)ranks[i][j][1]));
                 }
@@ -1016,108 +689,40 @@ public class Ratio_Calculator implements PlugIn
 	        rt = ResultsTable.getResultsTable();        
 	        rt.reset();
 	        rt.setPrecision(9);
-	        if (standHisto)
-	            {
-	            for (int i=0; i<histoDataS.length; i++)
-	                {
-	                rt.incrementCounter();
-	                if (statistics) rt.addValue("ratio",ratioData[i][1]);
-	                rt.addValue("frequency",histoDataS[i]);
-	                }
-	            rt.show("Results");
-	            IJ.renameResults("Results", prefix+"Original Data"); 
-	            }
-	        if (normHisto)
-	            {
-	            rt.reset();
-	            for (int i=0; i<histoDataN.length; i++)
-	                {
-	                rt.incrementCounter();
-	                if (statistics) rt.addValue("ratio",ratioData[i][1]);
-	                rt.addValue("frequency",histoDataN[i]);
-	                }
-	            rt.show("Results");
-	            IJ.renameResults("Results", prefix+"Original Data (normalized)");                      
-	           }
+            for (int i=0; i<ratioData.length; i++)
+                {
+                rt.incrementCounter();
+                if (statistics) rt.addValue("ratio",ratioData[i][1]);
+                rt.addValue("frequency",ratioData[i][0]);
+                }
+            rt.show("Results");
+            IJ.renameResults("Results", prefix+"Original Data"); 
 	        }
         
         if (statistics)
             {
-            if (standHisto) // add frequency data to the ratio table
-                {
-                for (int i=0; i<ratioData.length; i++)
-                    {
-                    ratioData[i][0] = histoDataS[i];
-                    }
-                calcStats(ratioData);
-                IJ.renameResults("Results", "Statistics");                             
-                }
-            if (normHisto) // normalized data
-                {
-                for (int i=0; i<ratioData.length; i++)
-                    {
-                    ratioData[i][0] = histoDataN[i];
-                    }
-                calcStats(ratioData);
-                IJ.renameResults("Results", "Statistics (normalized)");                             
-                }
-            ratioData = new double[1][1]; // free memory
+            calcStats(ratioData);
+            IJ.renameResults("Results", "Statistics");                             
             }
         
         if (histo)
             {
             HistoWrapper hw; // Object containing histo image and table
-            Ratio_Statistics rs_histo = new Ratio_Statistics(drawMax, normValue, defaultScale, maxPossibleValue, scaleOption, maskCounter, satCounter, logWindow, prefix, memoryError, title);
+            Ratio_Statistics rs_histo = new Ratio_Statistics(drawMax, defaultScale, maxPossibleValue, scaleHisto, maskCounter, satCounter, logWindow, prefix, memoryError, title);
        	
-            if (standHisto)
-                {
-                hw = rs_histo.calcHisto(histoDataS, histoX, histoY, histoBins, false, logWindow);
-        		logWindow = rs_histo.logWindow;
-         		histoDataS = new double[1];
-                ImagePlus img_histoS = hw.getImage(); 
-                if (img_histoS == null) return;
-                img_histoS.show();
-                IJ.renameResults("Results", "Histogram");               
-                }
-
-            if (normHisto) // normalized data
-                {
-                hw = rs_histo.calcHisto(histoDataN, histoX, histoY, histoBins, true, logWindow);
-        		logWindow = rs_histo.logWindow;
-                histoDataN = new double[1];
-                ImagePlus img_histoN = hw.getImage();
-                if (img_histoN == null) return;
-                img_histoN.setTitle(img_histoN.getTitle()+" (normalized)");                      
-                img_histoN.show();
-                IJ.renameResults("Results", "Histogram (normalized)");                      
-                }
+            hw = rs_histo.calcHistoRanks(ratioData, histoX, histoY, histoBins, logWindow);
+            ratioData = new double[1][1]; // free memory
+    		logWindow = rs_histo.logWindow;
+            ImagePlus img_histo = hw.getImage(); 
+            if (img_histo == null) return;
+            img_histo.show();
+            IJ.renameResults("Results", "Histogram");               
             }
 
         if (image)
             {
             img_ratio = Ratio_InOut.spectrumLUT(img_ratio, maxPossibleValue, displayLUT); // change the lookup table
             img_ratio.show();
-            }
-
-        if (scatter)
-            {
-            // prepare data for generate_Scatter()
-            mask = false; // otherwise the generate_scatter crashes
-            ImagePlus img_dupl = new Duplicator().run(img_ratio); // change a copy of the ratio image to 8 bit
-            ImageConverter ic = new ImageConverter(img_dupl);
-            ImageConverter.setDoScaling(true);
-            ic.convertToGray8();
-            ImagePlus[] img_temp = new ImagePlus[2]; // generate_scatter needs an array
-            img_temp[0] = img_dupl;
-            img_temp[1] = img_dupl;            
-            ImagePlus img_scatter = generate_Scatter(img_temp);
-            // find the max value, apply LUT and scale it
-            ImageStatistics iSt = new ImageStatistics();
-            iSt = ImageStatistics.getStatistics(img_scatter.getProcessor(), 16, null); // Get raw MIN_MAX
-            WindowManager.setTempCurrentImage(img_scatter); 
-            IJ.run("Fire"); // change the lookup table
-            img_scatter.getProcessor().setMinAndMax(0,iSt.max);
-            img_scatter.show();
             }
         }
 
@@ -1347,7 +952,7 @@ public class Ratio_Calculator implements PlugIn
     /**
      * Choose images.
      *
-     * @return the image plus[]
+     * @return the ImagePlus[]
      */
     private ImagePlus[] chooseImages() // choose images and parameters
         {
@@ -1378,12 +983,6 @@ public class Ratio_Calculator implements PlugIn
         channelO[0] = "Stack 1";
         channelO[1] = "Stack 2";
 
-        String[] scaleOption_temp = new String[4];
-        scaleOption_temp[0] = "Scale to fixed max. value (image & data)";
-        scaleOption_temp[1] = "Scale to image height (image only)";
-        scaleOption_temp[2] = "No scaling of data, scale image height";
-        scaleOption_temp[3] = "Normalize by total amount of data, specify image height";
-
 		int cgRows3=1, cgColumns3=2;
 		String[] cgLabels3 = 
 		    {
@@ -1403,12 +1002,11 @@ public class Ratio_Calculator implements PlugIn
 		int cgRows1=2, cgColumns1=2;
 		String[] cgLabels1 = 
 		    {
-            "Generate scatter plot",
             "Calculate statistics",
             "Generate histogram",
             "Calculate without the highest intensity value",
 		    };
-		boolean[] cgStates1 = {scatter,statistics,histo,stripStats};
+		boolean[] cgStates1 = {statistics,histo,stripStats};
 
         // create/show the dialog                
         GenericDialog gd = new GenericDialog(title);
@@ -1432,26 +1030,21 @@ public class Ratio_Calculator implements PlugIn
             gd.addCheckbox("Use mask for statistics, plots and ratio image", mask);
             gd.addChoice("Mask:", image_titles, image_titles[2]);
             }
-        gd.addMessage("Calculation of statistics, a histogram or a scatter plot without a mask is not recommended.");
+        gd.addMessage("Calculation of statistics or a histogram without a mask is not recommended.");
 
-		gd.setInsets(20,0,0);
+		gd.setInsets(20,20,0);
+        gd.addCheckbox("Show unbinned original frequencies", showUnbinned);
+
+		gd.setInsets(20,20,0);
+        gd.addMessage("Options for plotting the histogram:");
+        gd.setInsets(0,20,0);
         gd.addNumericField("Number of bins (histograms):", histoBins, 0, 9, "bins"); // title, default value, digits, length, units
-        gd.addChoice("Scaling of histograms:", scaleOption_temp, scaleOption_temp[scaleOption]);
-        gd.addNumericField("Scaling factor (for options 1 & 4):", defaultScale, 0, 9, "factor * (frequency / total amount of data)");
-        gd.addNumericField("Image height (for option 4):", drawMax, 0, 9, "(max. displayed frequency, not height in pixels)");
-        gd.addCheckbox("Show histograms/statistics with original values", standHisto);
-        gd.addCheckbox("Show histograms/statistics with values normalized by statistical frequency", normHisto);
-        gd.addCheckbox("Also show unbinned, original histogram data", showUnbinned);
+        gd.addCheckbox("Normalize histogram plot by total amount of pixels", scaleHisto);
+        gd.addNumericField("Scaling factor:", defaultScale, 0, 9, "factor * (frequency / total amount of pixels)");
+        gd.addNumericField("Image height:", drawMax, 0, 9, "(max. displayed frequency, not height in pixels)");
 
 		gd.setInsets(20,20,0);
-        gd.addCheckbox("Scale scatter plot if max. frequency exceeds max. representable number (otherwise cut off higher values)", maxScatter);
-        gd.addCheckbox("Normalize scatter plot to the total amount of data (use scaling factor for histograms)", scatterScale);
-        gd.addNumericField("Multipl. factor for scatter plot scaling during normalization:", scatterMulti, 1, 9, "* histogram scaling factor");
-
-		gd.setInsets(20,20,0);
-        gd.addCheckbox("Show the rank matrix and histogram instead of processing image data (don't use scaling option 4!)", showRanks);
         gd.addCheckbox("Use the ratio (x-y)/(x+y) instead of x/y", useUniRatio);
-        gd.addCheckbox("Use old format for statistics files.", oldFormat);
         gd.addCheckbox("Calculate ratio image separately to save memory (takes more time)", extraRatio);
         gd.addCheckbox("Show parameters in log window", logInfo);
 
@@ -1464,18 +1057,15 @@ public class Ratio_Calculator implements PlugIn
         choice_index[1] = gd.getNextChoiceIndex();
         bitdepth = gd.getNextChoiceIndex(); // 0 = 8 bit, 1 = 16 bit, 2 = 32 bit
         if (image_titles.length > 2) choice_index[2] = gd.getNextChoiceIndex(); // mask
-        scaleOption = gd.getNextChoiceIndex(); // 0 = Factor, 1 = Image, 2 = No, 3 = Normalize
 
         histoBins = (int)gd.getNextNumber();
         defaultScale = (int)gd.getNextNumber();
         drawMax = (int)gd.getNextNumber();
-        scatterMulti = (double)gd.getNextNumber();
 
         keepFiles = gd.getNextBoolean();
         saveFiles = gd.getNextBoolean();
         image = gd.getNextBoolean();
         displayLUT = gd.getNextBoolean();
-        scatter = gd.getNextBoolean();
         statistics = gd.getNextBoolean();
         histo = gd.getNextBoolean();
         stripStats = gd.getNextBoolean();
@@ -1486,15 +1076,9 @@ public class Ratio_Calculator implements PlugIn
             mask = gd.getNextBoolean();
             }
 
-        standHisto = gd.getNextBoolean();
-        normHisto = gd.getNextBoolean();
-        if ((!standHisto) && (!normHisto)) standHisto=true;
         showUnbinned = gd.getNextBoolean();
-        maxScatter = gd.getNextBoolean();
-        scatterScale = gd.getNextBoolean();
-        showRanks = gd.getNextBoolean();
+        scaleHisto = gd.getNextBoolean();
         useUniRatio = gd.getNextBoolean();
-        oldFormat = gd.getNextBoolean();
         extraRatio = gd.getNextBoolean();
         logInfo = gd.getNextBoolean();
         if (!image) extraRatio = false;
@@ -1507,7 +1091,7 @@ public class Ratio_Calculator implements PlugIn
         prefix = gd.getNextString();
 
         // analyze the validity of the input images, create output array
-        if (!image && !statistics && !scatter && !histo)
+        if (!image && !statistics && !histo)
             {
             IJ.error(title, "No output has been chosen - aborting.");
             return null;
@@ -1566,31 +1150,13 @@ public class Ratio_Calculator implements PlugIn
     	if (stripStats) IJ.log("Calculation without highest intensity value");
     	if (histo) 
     		{
-            switch (scaleOption)
-	            {
-	            case 0: IJ.log("Scaling: Data to fixed max. value (1)");   
-	                    break;
-	            case 1: IJ.log("Scaling: Plot to image height (2)");   
-	                    break;
-	            case 2: IJ.log("Scaling: No scaling (3)");   
-	                    break;
-	            case 3: IJ.log("Scaling: Normalized by total amount of data (4)");   
-	                    break;
-	            }
+	        if(scaleHisto) IJ.log("Histogram normalized by total amount of pixels");   
     		IJ.log("Number of bins: "+IJ.d2s(histoBins,0));
     		IJ.log("Scaling factor: "+IJ.d2s(defaultScale,0));
     		IJ.log("Plot height: "+IJ.d2s(drawMax,0));
-    		IJ.log("Plot height (normalized): "+IJ.d2s(drawMax/normValue,0));
-    		}
-    	if (scatter) 
-    		{
-	    	if (maxScatter) IJ.log("Scatter plot scaled");
-	    	if (scatterScale) IJ.log("Scatter plot normalized");
-    		IJ.log("Multiplication factor for scatter plot: "+IJ.d2s(scatterMulti,2));
     		}
     	if (useUniRatio) IJ.log("Ratio (x-y)/(x+y) was used");
     	else IJ.log("Ratio x/y was used");
-    	if (oldFormat) IJ.log("Old format was used for statistics");
 	    }
     
     }

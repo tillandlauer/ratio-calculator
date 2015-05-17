@@ -355,7 +355,7 @@ public class Mask_Generator_RGB implements PlugIn
 		        }
             
             // Display the thresholded image
-            if (thresh_rgb == null) return;
+//            if (thresh_rgb == null) return;
             thresh_rgb.show();
             }
 

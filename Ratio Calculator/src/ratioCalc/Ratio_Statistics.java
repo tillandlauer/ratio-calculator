@@ -20,10 +20,9 @@ public class Ratio_Statistics
     private String[] xTitle; // x-labels for the different files (statistics)
 
 	private int drawMax=0;
-	private double normValue=0.0d;
 	private double defaultScale=0.0d;
 	private int maxPossibleValue=0;
-	private int scaleOption=0;
+	private boolean scaleHisto=true;
 	private long maskCounter=0;
 	private long satCounter=0;
 	public boolean logWindow=false;
@@ -39,13 +38,12 @@ public class Ratio_Statistics
     	}
 
     
-    public Ratio_Statistics(int drawMax2, double normValue2, double defaultScale2, int maxPossibleValue2, int scaleOption2, long maskCounter2, long satCounter2, boolean logWindow2, String prefix2, String memoryError2, String title2)
+    public Ratio_Statistics(int drawMax2, double defaultScale2, int maxPossibleValue2, boolean scaleHisto2, long maskCounter2, long satCounter2, boolean logWindow2, String prefix2, String memoryError2, String title2)
 		{
     	drawMax = drawMax2;
-    	normValue = normValue2;
 		defaultScale = defaultScale2;
         maxPossibleValue = maxPossibleValue2;
-        scaleOption = scaleOption2;
+        scaleHisto = scaleHisto2;
         maskCounter = maskCounter2;
         satCounter = satCounter2;
         logWindow = logWindow2;
@@ -449,24 +447,34 @@ public class Ratio_Statistics
        }
 
 
+    public HistoWrapper calcHistoInt(double[] histoData, int xSize, int ySize, int bins, boolean logWindow2) // Generate histogram plot for intensities.
+    	{
+    	double[][] ratioData = new double[histoData.length][2];
+    	for (int i=0; i<ratioData.length; i++)
+    		{
+    		ratioData[i][0] = histoData[i];
+    		ratioData[i][1] = 0;
+    		}
+    	return calcHistoRanks(ratioData, xSize, ySize, bins, logWindow2);
+    	}
+    
     /**
-     * Calculate histograms.
+     * Calculate histograms binned by ranks.
      *
-     * @param histoData the actual input data
+     * @param ratioData the actual input data
      * @param xSize the width of the histogram
      * @param ySize the height of the histogram
      * @param bins the number of bins
      * @return the image plus
      */
-    public HistoWrapper calcHisto(double[] histoData, int xSize, int ySize, int bins, boolean lowHisto, boolean logWindow2) // Generate histogram plot & table from a ratio matrix.
+    public HistoWrapper calcHistoRanks(double[][] ratioData, int xSize, int ySize, int bins, boolean logWindow2) // Generate histogram plot & table from a ratio matrix.
         {
+    	// Histogram binned by ranks    	
     	logWindow = logWindow2;
-    	int drawMax_temp = drawMax;
-    	if (lowHisto) drawMax = (int)Math.round(drawMax/normValue);
+    	int drawMax_temp = drawMax; // max frequency
         int[] histoSize = new int[2];
         histoSize[0] = xSize; // width of the histogram window
         histoSize[1] = ySize; // height of the histogram window
-		double maxYvalue = (double)defaultScale; // max frequency (-> scale down all values to this factor, even for results table, if scaleOption=0)       
         if (bins > histoSize[0]) histoSize[0]=bins; // otherwise no output is created.        
         double factor = (double)maxPossibleValue/(double)bins; // factor for scaling frequencies into the final bins
         int binWidth = (int)Math.round(histoSize[0] / (bins-1.0d)); // width of each bin; only for plotting
@@ -474,21 +482,21 @@ public class Ratio_Statistics
         double[] histo = new double[bins+1]; // array for the final, binned frequencies
 		int realBin = 0; // temporary variable for final bins
 
-        for (int i=0; i<histoData.length; i++) // put frequencies into final bins
+        for (int i=0; i<ratioData.length; i++) // put frequencies into final bins
             {
             realBin = (int)Math.round(i/factor); // each value of histoData corresponds to a rank
             if (realBin>bins) realBin = bins; // corrects for rounding errors
-		    histo[realBin] = histo[realBin] + histoData[i]; // add the frequencies from histoData to the bins
+		    histo[realBin] = histo[realBin] + ratioData[i][0]; // add the frequencies from histoData to the bins
             }
         
+		// from here on identical to calcHistoRatios()
         double max = histo[0]; // find the maximum frequency (for scaling)
         for (int i=0; i<histo.length; i++)
             {  
             if (histo[i] > max) max = histo[i];
             }  
 
-        boolean tempScale = false;
-        if (scaleOption == 3) // normalize all bins by total amount of data
+        if (scaleHisto) // normalize all bins by total amount of data
             {
             long pixels = maskCounter-satCounter; // total amount of data
             double maxScale = (double)defaultScale; // scale by this factor after normalization to get values back >1
@@ -503,21 +511,13 @@ public class Ratio_Statistics
                 logWindow = true;
                 }
             max = (int)drawMax; // set height of plot to the value entered by the user
-            scaleOption = 1; // continue plotting in the scale to max mode
-            tempScale = true;
             }
 
-        if (scaleOption != 0) maxYvalue = max; // Fixed value scaling off
+        double maxYvalue = max; // max frequency
         double factor2 = max / maxYvalue; // scaling factor for the frequencies      
         double scaleHeight = (double)histoSize[1] / maxYvalue; // scaling factor for the image (for plotting)                
-        if (scaleOption == 2) // No scaling 
-            {
-            scaleHeight = 1;
-            if ((int)max>histoSize[1]) histoSize[1] = (int)max; // set the image height to the max. frequency
-            }
-        if (tempScale) scaleOption = 3; // restore original scaleOption for next plot
 
-        String imp_out_title = prefix+"Histogram plot";
+        String imp_out_title = prefix+"Histogram plot (ranks)";
         ImagePlus imp_out = NewImage.createByteImage(imp_out_title, histoSize[0], histoSize[1], 1, 1);
         if (imp_out == null) // produce an error if this fails
             {
@@ -556,7 +556,7 @@ public class Ratio_Statistics
         rt.show("Results");
         ip_out.flipVertical();
         
-        HistoWrapper hw = new HistoWrapper(); // Object containing histo image and table
+        HistoWrapper hw = new HistoWrapper(); // Object containing histogram image and table
         hw.setImage(imp_out);
         hw.setTable(rt);
         
@@ -564,4 +564,124 @@ public class Ratio_Statistics
         return hw;
         }
     
+    
+    /**
+     * Calculate histograms binned by ratios.
+     *
+     * @param ratioData the actual input data
+     * @param xSize the width of the histogram
+     * @param ySize the height of the histogram
+     * @param bins the number of bins
+     * @return the image plus
+     */
+    public HistoWrapper calcHistoRatios(double[][] ratioData, int xSize, int ySize, int bins, boolean logWindow2) // Generate histogram plot & table from a ratio matrix.
+        {
+    	// Histogram binned by ratios  	
+    	logWindow = logWindow2;
+    	int drawMax_temp = drawMax; // max frequency
+        int[] histoSize = new int[2];
+        histoSize[0] = xSize; // width of the histogram window
+        histoSize[1] = ySize; // height of the histogram window
+        if (bins > histoSize[0]) histoSize[0]=bins; // otherwise no output is created.        
+        int binWidth = (int)Math.round(histoSize[0] / (bins-1.0d)); // width of each bin; only for plotting
+        histoSize[0] = histoSize[0] + binWidth; // otherwise the last bin gets cut off during plotting
+
+		double step=-8.0; // log2(1/256)
+		double[][] histo = new double[2][bins+1];  // histo[0] = stepList = seq(log2(1/256),log2(256),2*log2(256)/bins)
+		histo[0][0] = step; // lower boundary of first bin
+		double cValue; // bin = cut(log2(merged$ratio.x),stepList,include.lowest=T,labels=seq(1,bins,1))
+
+		//		for (double i=-Math.log(256)/Math.log(2); i<=Math.log(256)/Math.log(2); i+=2*(Math.log(256)/Math.log(2))/bins) // generate steps for bins. log2(x) = log10(x)/log10(2)
+		for (int i=0; i<histo[0].length-1; i++) // generate steps for bins. log2(x) = log10(x)/log10(2)
+        	{
+        	step += 2.0*8.0/bins;
+			histo[0][i+1] = step; // upper boundary of current bin (=lower boundary of next bin)
+
+    		// assign each frequency to a bin and sum the frequencies within the bins
+    		for (int j=0; j<ratioData.length; j++) // cycle through ratios
+	    		{
+				cValue = Math.log(ratioData[j][1])/Math.log(2); // log2(ratio)
+				if (cValue>=histo[0][i] && cValue<histo[0][i+1]) // cValue is in current bin
+					{
+					histo[1][i] = histo[1][i] + (int)Math.round(ratioData[j][0]); // add to bin
+					}
+	    		}
+        	}
+
+		// prepare plot
+		double max = histo[1][0]; // find the maximum frequency (for scaling)
+        for (int i=0; i<histo[1].length-1; i++)
+            {  
+            if (histo[1][i] > max) max = histo[1][i];
+            }  
+
+        if (scaleHisto) // normalize all bins by total amount of data
+            {
+            long pixels = maskCounter-satCounter; // total amount of data
+            double maxScale = (double)defaultScale/100; // scale by this factor after normalization to get values back >1
+            for (int i=0; i<histo[1].length-1; i++)
+                {  
+                histo[1][i] = maxScale * (histo[1][i] / pixels); // normalize and scale all bins
+                }  
+            double compMax = maxScale*(max/pixels); // highest normalized value
+            if (compMax > drawMax) // test whether highest value fits into the plot
+                {
+                IJ.log("Caution: Histogram was cut off, consider re-plotting it. Max value: "+IJ.d2s(compMax,0)+" ("+IJ.d2s(drawMax,0)+")");
+                logWindow = true;
+                }
+            max = (int)drawMax; // set height of plot to the value entered by the user
+            }
+
+        double maxYvalue = max; // max frequency
+        double factor2 = max / maxYvalue; // scaling factor for the frequencies      
+        double scaleHeight = (double)histoSize[1] / maxYvalue; // scaling factor for the image (for plotting)                
+
+        String imp_out_title = prefix+"Histogram plot (ratios)";
+        ImagePlus imp_out = NewImage.createByteImage(imp_out_title, histoSize[0], histoSize[1], 1, 1);
+        if (imp_out == null) // produce an error if this fails
+            {
+            IJ.error(title, memoryError);
+            return null;
+            }
+        WindowManager.checkForDuplicateName = true; // add a number to the title if name already exists  
+
+        ImageProcessor ip_out = imp_out.getProcessor();
+
+        ResultsTable rt = ResultsTable.getResultsTable();
+        rt.reset();
+        rt.setPrecision(9);
+        int picPos = 0; // position within the image
+        double maxLoop = maxYvalue*scaleHeight;
+
+        for(int i=0; i<bins; i++)
+            {
+            histo[1][i] = Math.round(histo[1][i]/factor2); // scaling of frequencies to a fixed value
+
+            rt.incrementCounter();
+            rt.addValue("Bin", histo[0][i]);
+            rt.addValue("Frequency", histo[1][i]);
+
+            histo[1][i] = Math.round(histo[1][i] * scaleHeight); // scaling for the plot
+            for(int j=0; j<maxLoop; j++) // create image
+                {
+                for (int k=0; k<binWidth; k++)
+                    {
+                    if(j<=histo[1][i]) ip_out.putPixel(picPos+k,j,255);
+                    else ip_out.putPixel(picPos+k,j,0);
+                    }
+                }
+            picPos = picPos + binWidth; // move on to the next bin
+            }
+
+        rt.show("Results");
+        ip_out.flipVertical();
+        
+        HistoWrapper hw = new HistoWrapper(); // Object containing histogram image and table
+        hw.setImage(imp_out);
+        hw.setTable(rt);
+        
+        drawMax = drawMax_temp;
+        return hw;
+        }
+        
     } 

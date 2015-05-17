@@ -18,12 +18,12 @@ import java.util.ArrayList;
 /**
  * Calculates average intensities.
  * @author Till Andlauer (till@andlauer.net)
- * @version 1.1 - 13-08-21
+ * @version 1.11 - 15-05-17
  */
 public class Intensity_Calculator implements PlugIn
     {
 	/** Title for dialogs and error messages. */
-    private String title = "Intensity Calculator v1.1"; // title for dialogs and error messages
+    private String title = "Intensity Calculator v1.11"; // title for dialogs and error messages
 	/** Error message when out of memory */
     private String memoryError = "Out of memory...";
 	/** Error message when file couldn't be saved */
@@ -67,45 +67,35 @@ public class Intensity_Calculator implements PlugIn
     * <br>Useful with potentially oversaturated data 
     */
     private boolean stripStats = true; // Calculate statistics without the value 255.
-    /** Use mask for statistics, histogram & scatter plot; set in <code>chooseImages</code> 
+    /** Use mask for statistics & histogram; set in <code>chooseImages</code> 
     * <br><i>It is always recommended to use a mask</i> 
     */
     private boolean mask = true; // Mask should be used for statistics, histogram, scatter plot.
-    /** Show original, unbinned histogram data; set in <code>chooseImages</code> */
+    /** Show original, unbinned results; set in <code>chooseImages</code> */
     private boolean showUnbinned = true; // Show original, unbinned histogram data
     /** Show parameters in the log window; set in <code>chooseImages</code> */
     private boolean logInfo = true; // Show parameters in the log window
     /** Number of histogram bins; set in <code>chooseImages</code>; default: <code>256</code> */
     private int histoBins = 128; // number of bins for the histogram
-    /** Scaling factor for histograms (for scaleOptions <code>0</code> & <code>3</code>); set in <code>chooseImages</code>
+    /** Scaling factor for histograms; set in <code>chooseImages</code>
     * <br><code>scaling factor * (frequency / total amount of data)</code>
-    * <br>default for <code>scaleOption 3</code>: <code>10000000</code>
-    * @see scaleOption 
+    * <br>default: <code>10000000</code>
+    * @see scaleHisto
     * @see drawMax 
     */
-    private int defaultScale = 10000000; // Default scaling factor for histograms (options 1/4)   
+    private int defaultScale = 10000000; // Default scaling factor for histograms 
     /** Height of histogram plots; set in <code>chooseImages</code> 
     * <br>(for <code>scaleOption 3</code>; max displayed frequency, not height in pixels)
     * <br>default: <code>130000</code>
-    * @see scaleOption 
+    * @see scaleHisto 
     * @see defaultScale 
-    * @see normValue 
     */
-    private int drawMax = 520000; // Default image height for histograms (option 4, normalize)
-    /** Height of normalized histogram plots relative to other histograms 
+    private int drawMax = 520000; // Default image height for histograms
+    /** Height of normalized histogram plots is normalized to total amount of pixels (and thus comparable to other histograms) 
     * @see drawMax 
+    * @see defaultScale 
     */
-    private double normValue = 10.0d; // drawMax is divided by this value for normalized histograms
-    /** How to scale histograms; set in <code>chooseImages</code> 
-    * <br><code>0</code> = Scale the max value of data & image to a fixed value (<code>defaultScale</code>)  
-    * <br><code>1</code> = Don't change the data; for display only scale the max value to the height of the image window  
-    * <br><code>2</code> = Don't change the data; scale the height of the image window to the max value of the data  
-    * <br><code>3</code> = Normalize the data by the total amount of data points; specify the max value displayed in the plot (<code>defaultScale</code>, <code>drawMax</code>)  
-    * <br><code>scaleOption 3</code> is recommended if several plots shall be compared
- 	* @see defaultScale
- 	* @see drawMax
-    */
-    private int scaleOption = 3; // How to scale the histogram. 0 = Factor, 1 = Image, 2 = No, 3 = Normalize
+    private boolean scaleHisto = true; // Normalize histogram by total amount of pixels
 
 	/**
 	 * Runs the analysis
@@ -166,13 +156,11 @@ public class Intensity_Calculator implements PlugIn
 		if (rc.error) return false;
 		else
 			{
-			String[] ints = {"histoBins", "defaultScaleInt", "drawMaxInt", "scaleOption"};
-			String[] doubles = {"normValueInt"};
+			String[] ints = {"histoBins", "defaultScaleInt", "drawMaxInt"};
 			String[] strings = {"prefix"};
-			String[] booleans = {"keepFiles", "saveFiles", "histo", "statistics", "stripStats", "mask", "showUnbinned", "logInfo", "triple"};
+			String[] booleans = {"keepFiles", "saveFiles", "histo", "statistics", "stripStats", "mask", "scaleHisto", "showUnbinned", "logInfo", "triple"};
 
 			int cInt = 0;
-			double cDouble = 0.0d;
 			String cString = "";
 			boolean cBool = false;
 			
@@ -184,13 +172,6 @@ public class Intensity_Calculator implements PlugIn
 	    	else rc.error=false;
 	    	cInt = rc.getInt(ints[2]);
 	    	if (!rc.error) drawMax=cInt;
-	    	else rc.error=false;
-	    	cInt = rc.getInt(ints[3]);
-	    	if (!rc.error) scaleOption=cInt;
-	    	else rc.error=false;
-
-	    	cDouble = rc.getDouble(doubles[0]);
-	    	if (!rc.error) normValue=cDouble;
 	    	else rc.error=false;
 
 	    	cString = rc.getValue(strings[0]);
@@ -216,12 +197,15 @@ public class Intensity_Calculator implements PlugIn
 	    	if (!rc.error) mask=cBool;
 	    	else rc.error=false;
 	    	cBool = rc.getBoolean(booleans[6]);
-	    	if (!rc.error) showUnbinned=cBool;
+	    	if (!rc.error) scaleHisto=cBool;
 	    	else rc.error=false;
 	    	cBool = rc.getBoolean(booleans[7]);
-	    	if (!rc.error) logInfo=cBool;
+	    	if (!rc.error) showUnbinned=cBool;
 	    	else rc.error=false;
 	    	cBool = rc.getBoolean(booleans[8]);
+	    	if (!rc.error) logInfo=cBool;
+	    	else rc.error=false;
+	    	cBool = rc.getBoolean(booleans[9]);
 	    	if (!rc.error) triple=cBool;
 	    	else rc.error=false;
 			}
@@ -254,15 +238,10 @@ public class Intensity_Calculator implements PlugIn
         byte[][] pixel = new byte[4][size]; // image 1, image 2, mask
         int[] value = new int[4]; // pixel values       
 
-        // arrays for statistics and histograms
+        // array for statistics and histogram
         double[][] histoData = new double[3][maxPossibleValue]; // maxPossibleValue should be 256
-        
-         // histogram settings
-        int histoX = 1024;
-        int histoY = 512;
  
         //-- start actually doing stuff --//
-
         // count
         IJ.showStatus("Counting intensities...");
         for (int i=1; i<=slices; i++)
@@ -373,8 +352,8 @@ public class Intensity_Calculator implements PlugIn
                 if (triple) rt.addValue("frequency 3",histoData[2][i]);
                 }
             rt.show("Results");
-            if (saveFiles) rioT.saveTable(rt, prefix+"Original Data");                      
-            else IJ.renameResults("Results", prefix+"Original Data"); 
+            if (saveFiles) rioT.saveTable(rt, prefix+"Unbinned Results");                      
+            else IJ.renameResults("Results", prefix+"Unbinned Results"); 
             }
 
         if (statistics) 
@@ -389,9 +368,12 @@ public class Intensity_Calculator implements PlugIn
             {
             IJ.showStatus("Generating histogram...");
             HistoWrapper hw; // Object containing histo image and table
-            Ratio_Statistics rs_histo = new Ratio_Statistics(drawMax, normValue, defaultScale, maxPossibleValue, scaleOption, maskCounter, satCounter, logWindow, prefix, memoryError, title);
+            Ratio_Statistics rs_histo = new Ratio_Statistics(drawMax, defaultScale, maxPossibleValue, scaleHisto, maskCounter, satCounter, logWindow, prefix, memoryError, title);
             FileSaver fs;           
-            hw = rs_histo.calcHisto(histoData[0], histoX, histoY, histoBins, false, logWindow);
+            int histoX = 1024;
+            int histoY = 512;
+
+            hw = rs_histo.calcHistoInt(histoData[0], histoX, histoY, histoBins, logWindow);
     		logWindow = rs_histo.logWindow;
             ImagePlus img_histo = hw.getImage(); 
             if (img_histo == null) return false;
@@ -405,7 +387,7 @@ public class Intensity_Calculator implements PlugIn
                 }
             else IJ.renameResults("Results", prefix+"Histogram 1");               
 
-            hw = rs_histo.calcHisto(histoData[1], histoX, histoY, histoBins, false, logWindow);
+            hw = rs_histo.calcHistoInt(histoData[1], histoX, histoY, histoBins, logWindow);
     		logWindow = rs_histo.logWindow;
             img_histo = hw.getImage(); 
             if (img_histo == null) return false;
@@ -421,7 +403,7 @@ public class Intensity_Calculator implements PlugIn
 
             if (triple)
             	{
-                hw = rs_histo.calcHisto(histoData[2], histoX, histoY, histoBins, false, logWindow);
+                hw = rs_histo.calcHistoInt(histoData[2], histoX, histoY, histoBins, logWindow);
         		logWindow = rs_histo.logWindow;
                 img_histo = hw.getImage(); 
                 if (img_histo == null) return false;
@@ -572,7 +554,7 @@ public class Intensity_Calculator implements PlugIn
     /**
      * Choose images.
      *
-     * @return the image plus[]
+     * @return the ImagePlus[]
      */
     private ImagePlus[] chooseImages() // choose images and parameters
         {
@@ -598,12 +580,6 @@ public class Intensity_Calculator implements PlugIn
         String[] channelO = new String[2];
         channelO[0] = "Stack 1";
         channelO[1] = "Stack 2";
-
-        String[] scaleOption_temp = new String[4];
-        scaleOption_temp[0] = "Scale to fixed max. value (image & data)";
-        scaleOption_temp[1] = "Scale to image height (image only)";
-        scaleOption_temp[2] = "No scaling of data, scale image height";
-        scaleOption_temp[3] = "Normalize by total amount of data, specify image height";
 
 		int cgRows3=1, cgColumns3=2;
 		String[] cgLabels3 = 
@@ -649,12 +625,18 @@ public class Intensity_Calculator implements PlugIn
             }
         gd.addMessage("Calculation of statistics or a histogram without a mask is not recommended.");
 
-		gd.setInsets(20,0,0);
+        gd.setInsets(20,20,0);
+        gd.addCheckbox("Show unbinned original frequencies", showUnbinned);
+
+		gd.setInsets(20,20,0);
+        gd.addMessage("Options for plotting the histogram:");
+        gd.setInsets(0,20,0);
         gd.addNumericField("Number of bins (histograms):", histoBins, 0, 9, "bins"); // title, default value, digits, length, units
-        gd.addChoice("Scaling of histograms:", scaleOption_temp, scaleOption_temp[scaleOption]);
-        gd.addNumericField("Scaling factor (for options 1 & 4):", defaultScale, 0, 9, "factor * (frequency / total amount of data)");
-        gd.addNumericField("Image height (for option 4):", drawMax, 0, 9, "(max. displayed frequency, not height in pixels)");
-        gd.addCheckbox("Also show unbinned, original histogram data", showUnbinned);
+        gd.addCheckbox("Normalize histogram plot by total amount of pixels", scaleHisto);
+        gd.addNumericField("Scaling factor:", defaultScale, 0, 9, "factor * (frequency / total amount of pixels)");
+        gd.addNumericField("Image height:", drawMax, 0, 9, "(max. displayed frequency, not height in pixels)");
+
+		gd.setInsets(20,20,0);
         gd.addCheckbox("Show parameters in log window", logInfo);
 
         gd.showDialog();
@@ -689,9 +671,8 @@ public class Intensity_Calculator implements PlugIn
             choice_index[3] = gd.getNextChoiceIndex(); // mask
             }
 
-        scaleOption = gd.getNextChoiceIndex(); // 0 = Factor, 1 = Image, 2 = No, 3 = Normalize
-        
         showUnbinned = gd.getNextBoolean();
+        scaleHisto = gd.getNextBoolean();
         logInfo = gd.getNextBoolean();
 
         prefix = gd.getNextString();
@@ -772,17 +753,7 @@ public class Intensity_Calculator implements PlugIn
     	if (stripStats) IJ.log("Calculation without highest intensity value");
     	if (histo) 
     		{
-            switch (scaleOption)
-	            {
-	            case 0: IJ.log("Scaling: Data to fixed max. value (1)");   
-	                    break;
-	            case 1: IJ.log("Scaling: Plot to image height (2)");   
-	                    break;
-	            case 2: IJ.log("Scaling: No scaling (3)");   
-	                    break;
-	            case 3: IJ.log("Scaling: Normalized by total amount of data (4)");   
-	                    break;
-	            }
+            if(scaleHisto) IJ.log("Histogram normalized by total amount of pixels");   
     		IJ.log("Number of bins: "+IJ.d2s(histoBins,0));
     		IJ.log("Scaling factor: "+IJ.d2s(defaultScale,0));
     		IJ.log("Plot height: "+IJ.d2s(drawMax,0));

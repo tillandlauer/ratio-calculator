@@ -365,7 +365,7 @@ public class Mask_Generator implements PlugIn
             if (!ratio) IJ.run("Fire");
             }
 
-        if (!keepAM) img[1].close();
+        if (merge && !keepAM) img[1].close();
         IJ.showStatus("The calculation took "+IJ.d2s((System.currentTimeMillis()-start_time)/1000.0d, 2)+" seconds."); // display the amount of time used.
         }
 
