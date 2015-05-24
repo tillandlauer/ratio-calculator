@@ -1,0 +1,66 @@
+// Ratio_Calculator Configuration file: Default values
+// --Common--
+// --General Analysis--
+// directory = /Users/xxx/ // directory for saving files manually
+nFiles = 8 // number of files to be opened
+sd = 1 // calculate/show standard errors
+statsMean = 1 // use mean instead of median for statistics
+screen = 1 // show GnuPlot results on screen
+terminal = aqua // output of GnuPlot data (aqua/x11/windows/wxt)
+svg = 1 // create .svg file
+png = 1 // create .png file
+// --Ratio_Analysis--
+job = 2; // type of analysis to run by default; 0 = Histograms, 1 = Statistics, 2 = Histograms and Statistics, 3 = histogram overview, 4 = compare groups, 5 = normalize files to a reference, 6 = fingerprint, 7 = proportions, 8 = Subtract histograms
+stats_mad = 0 // use MAD (median absolute deviation) for statistics
+histo_med = 0 // use median for histograms
+plottitle = Ratios // Title of GnuPlot plot
+axislabel = ratios // Axis label of GnuPlot plot
+// --Intensity_Analysis--
+intJob = 2 // type of analysis to run 0 = Histograms, 1 = Statistics, 2 = All basic plots, 3 = comparative statistics, 4 = histograms overview
+nChannels = 2 // number of channels to be used
+histoMean = 1 // use mean instead of median for histograms
+statsSEMed = 1 // use Standard Error of the Median instead of MAD (median absolute deviation) for statistics
+ratios = 0 // calculate ratios
+intPlottitle = Intensities // Title of GnuPlot plot
+intAxislabel = intensities // Axis label of GnuPlot plot
+// --Ratio_Calculator--
+// prefix =  // added in front of image and table names
+bitdepth = 0 // bitdepth of the output image. 0 = 8 bit, 1 = 16 bit, 2 = 32 bit.
+keepFiles = 0 // Keep source files open
+saveFiles = 1 // Save all generated files
+image = 1 // Generated output image.
+displayLUT = 0 // Show the LUT.
+histo = 1 // Calculated histogram.
+statistics = 1 // Calculate statistics.
+stripStats = 1 // Calculate statistics without the value 255.
+mask = 1 // Mask should be used for statistics, histogram, scatter plot.
+scaleHisto = 1 // Normalize histogram by total amount of pixels
+showUnbinned = 1 // Show original unbinned histogram data
+useUniRatio = 0 // (a-b)/(a+b)
+extraRatio = 0 // Calculate ratio image separately
+logInfo = 1 // Show parameters in the log window
+histoBins = 128 // number of bins for the histogram
+defaultScale = 10000000 // Default scaling factor for histograms (options 1/4)   
+drawMax = 300000 // Default image height for histograms (option 4, normalize)
+// --Intensity_Calculator--
+defaultScaleInt = 10000000 // Default scaling factor for histograms (options 1/4)   
+drawMaxInt = 520000 // Default image height for histograms (option 4, normalize)
+triple = 0 // use three channels
+// --Mask_Generator--
+defaultThreshold = 0.8 // default threshold for dialog (-> factor)
+rgb = 1 // merge channels
+dupl = 0 // duplicate the first stack during RGB merge
+merge = 1 // merge stack and (Amira) segmentation mask. If "0" only thresholding is performed.
+thresh = 1 // threshold
+tSlice = 1 // calculate threshold based on substacks
+iThresh = 1 // interpolate thresholds
+showRes = 0 // show results table with thresholds
+manual = 0 // manually define the number of substacks
+ratio = 0 // input image is a ratio image from ratio calculator
+maskM = 0 // keep non-thresholded mask
+keepAM = 0 // keep (Amira) segmentation mask file. "0" can lead to crashes 
+perc = 0 // percentile thresholding (otherwise isodata) set by choice:Method
+factor = 0.0 // thresholding factor (see default threshold)
+nBins = 0 // number of substacks
+cutOff = 0 // min. number of slices per substack
+// End of file.
