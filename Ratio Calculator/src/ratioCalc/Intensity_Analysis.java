@@ -31,7 +31,7 @@ import java.util.ArrayList;
 // Standard Error of the Median = s = (a-b) / 3.4641; a = (n/2 + sqrt(3n)/2) th observation, b = (n/2 - sqrt(3n)/2) th observation, rounded up to the next number 
 // Source: Lothar Sachs, Angewandte Statistik, 11. Auflage 2003, S. 160.
 //
-// Error propagation according to: Lothar Papula, Mathematik fŸr Ingenieure und Naturwissenschaftler Band 3, 5. Auflage 2008, Kapitel 4.3, Seite 678ff: Gau§sches Fehlerfortpflanzungsgesetz
+// Error propagation according to: Lothar Papula, Mathematik fï¿½r Ingenieure und Naturwissenschaftler Band 3, 5. Auflage 2008, Kapitel 4.3, Seite 678ff: Gauï¿½sches Fehlerfortpflanzungsgesetz
 // Sum of two values X,Y with uncertainties sX,sY:        e = SQRT((sX/2)^2 + (sY/2)^2))
 // Sum of three values X,Y,Z with uncertainties sX,sY,sZ: e = SQRT((sX/3)^2 + (sY/3)^2 + (sZ/3)^2))
 // Division of two values X,Y with uncertainties sX,sY:        e = SQRT((sX/X)^2 + (sY/Y)^2))
@@ -315,16 +315,16 @@ public class Intensity_Analysis implements PlugIn
 	                {
 	            	if (statsMean)
 		            	{            		
-	            		median[i] = Ratio_Statistics.getMean(data[i]); // get the mean for each value (min,q1âmedian,q3,max)
+	            		median[i] = Ratio_Statistics.getMean(data[i]); // get the mean for each value (min,q1ï¿½median,q3,max)
 		            	}
 	            	else // median
 	            		{
-	            		median[i] = Ratio_Statistics.getMedian(data[i], true); // get the median for each value (min,q1âmedian,q3,max)
+	            		median[i] = Ratio_Statistics.getMedian(data[i], true); // get the median for each value (min,q1ï¿½median,q3,max)
 	            		}    
 	
 	                if (statsMean)
 	                	{
-	            		sem[i] = Ratio_Statistics.getSD(data[i],median[i])/Math.sqrt(data[i].length); // get the SEM for each value (min,q1âmedian,q3,max)                	
+	            		sem[i] = Ratio_Statistics.getSD(data[i],median[i])/Math.sqrt(data[i].length); // get the SEM for each value (min,q1ï¿½median,q3,max)                	
 	                	}
 	                else if (!statsSEMed) // MAD
 	                    {
@@ -431,7 +431,7 @@ public class Intensity_Analysis implements PlugIn
         	
         	if (ratios)
 	        	{
-                // NOTE: error propagation according to: Lothar Papula, Mathematik fŸr Ingenieure und Naturwissenschaftler Band 3, 5. Auflage 2008. Kapitel 4.3, Seite 678ff: Gau§sches Fehlerfortpflanzungsgesetz
+                // NOTE: error propagation according to: Lothar Papula, Mathematik fï¿½r Ingenieure und Naturwissenschaftler Band 3, 5. Auflage 2008. Kapitel 4.3, Seite 678ff: Gauï¿½sches Fehlerfortpflanzungsgesetz
         		// Division of two values X,Y with uncertainties sX,sY:        e = SQRT((sX/X)^2 + (sY/Y)^2))
 //        	    ratiosToDo = new int[3][2]; // supports three different ratios
 //	            ratioData = new double[nChannels][2][data.length]; // mean and sem
@@ -806,6 +806,9 @@ public class Intensity_Analysis implements PlugIn
 
         // create the dialog
         GenericDialog gd = new GenericDialog(title);
+        gd.addMessage("This plugin exists for compatibility. Please rather analyze the unbinned Intensity Calculator results using R.");
+        gd.addMessage("");
+
         gd.addChoice("What do you want to plot:", purpose_temp, purpose_temp[job]);
         gd.addNumericField("Number of input files:", nFiles, 0);
         gd.addNumericField("Number of channels:", nChannels, 0);
