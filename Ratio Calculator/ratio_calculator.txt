@@ -10,7 +10,7 @@ terminal = aqua // output of GnuPlot data (aqua/x11/windows/wxt)
 svg = 1 // create .svg file
 png = 1 // create .png file
 // --Ratio_Analysis--
-job = 2; // type of analysis to run by default; 0 = Histograms, 1 = Statistics, 2 = Histograms and Statistics, 3 = histogram overview, 4 = compare groups, 5 = normalize files to a reference, 6 = fingerprint, 7 = proportions, 8 = Subtract histograms
+job = 2 // type of analysis to run by default; 0 = Histograms, 1 = Statistics, 2 = Histograms and Statistics, 3 = histogram overview, 4 = compare groups, 5 = normalize files to a reference, 6 = fingerprint, 7 = proportions, 8 = Subtract histograms
 stats_mad = 0 // use MAD (median absolute deviation) for statistics
 histo_med = 0 // use median for histograms
 plottitle = Ratios // Title of GnuPlot plot
